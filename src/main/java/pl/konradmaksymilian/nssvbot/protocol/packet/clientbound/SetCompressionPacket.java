@@ -1,4 +1,7 @@
-package pl.konradmaksymilian.nssvbot.protocol.packet;
+package pl.konradmaksymilian.nssvbot.protocol.packet.clientbound;
+
+import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
+import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 
 public final class SetCompressionPacket implements Packet {
 
@@ -15,5 +18,10 @@ public final class SetCompressionPacket implements Packet {
     @Override
     public PacketName getName() {
         return PacketName.SET_COMPRESSION;
+    }
+    
+    @Override
+    public String toString() {
+        return getName() + " - threshold: " + threshold;
     }
 }

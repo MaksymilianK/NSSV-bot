@@ -1,4 +1,7 @@
-package pl.konradmaksymilian.nssvbot.protocol.packet;
+package pl.konradmaksymilian.nssvbot.protocol.packet.clientbound;
+
+import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
+import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 
 public final class LoginSuccessPacket implements Packet {
 
@@ -25,6 +28,6 @@ public final class LoginSuccessPacket implements Packet {
     
     @Override
     public String toString() {
-        return username;
+        return getName() + " - username: " + username;
     }
 }

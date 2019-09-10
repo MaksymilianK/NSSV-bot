@@ -5,17 +5,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
+import pl.konradmaksymilian.nssvbot.protocol.ReadField;
+
 public final class StringConverter {
     
     private StringConverter() {}
     
-    public static String readString(InputStream in) throws IOException {
-        int length = VarIntLongConverter.readVarInt(in).getValue();
-        byte[] bytes = new byte[length];
-        for (int i = 0; i < length; i++) {
+    public static ReadField<String> readString(InputStream in) throws IOException {
+        var length = VarIntLongConverter.readVarInt(in);
+        byte[] bytes = new byte[length.getValue()];
+        for (int i = 0; i < length.getValue(); i++) {
             bytes[i] = (byte) in.read();
         }
-        return new String(bytes);
+        return new ReadField<>(new String(bytes), length.getLength() + length.getValue());
     }
     
     public static void writeString(String text, OutputStream out) throws IOException {

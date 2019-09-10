@@ -1,4 +1,4 @@
-package pl.konradmaksymilian.nssvbot.protocol;
+package pl.konradmaksymilian.nssvbot.protocol.packet;
 
 
 public class PacketReadingException extends RuntimeException {

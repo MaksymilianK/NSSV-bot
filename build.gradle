@@ -3,16 +3,21 @@ plugins {
     id 'application'
 }
 
+application {
+    mainClassName = 'pl.konradmaksymilian.nssvbot.NSSVBot'
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
 	implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-	testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.5.1'
+	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9.3'
 	testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.1'
 	testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.0.0'
 	testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.13.2'
+	testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.5.1'
 }
 
 test {

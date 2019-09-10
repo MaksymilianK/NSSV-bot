@@ -8,8 +8,9 @@ import java.io.DataOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import pl.konradmaksymilian.nssvbot.protocol.packet.HandshakePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.LoginStartPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.PacketWriter;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HandshakePacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.LoginStartPacket;
 
 public class PacketWriterTest {
 

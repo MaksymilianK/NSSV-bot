@@ -1,5 +1,7 @@
-package pl.konradmaksymilian.nssvbot.protocol.packet;
+package pl.konradmaksymilian.nssvbot.protocol.packet.serverbound;
 
+import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
+import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 
 public final class LoginStartPacket implements Packet {
 
