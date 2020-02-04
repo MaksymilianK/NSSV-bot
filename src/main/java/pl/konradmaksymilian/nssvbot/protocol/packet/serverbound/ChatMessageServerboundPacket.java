@@ -22,4 +22,13 @@ public final class ChatMessageServerboundPacket implements Packet {
     public PacketName getName() {
         return PacketName.CHAT_MESSAGE_SERVERBOUND;
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ChatMessageServerboundPacket) {
+            return message.equals(((ChatMessageServerboundPacket) obj).getMessage());
+        } else {
+            return false;
+        }
+    }
 }

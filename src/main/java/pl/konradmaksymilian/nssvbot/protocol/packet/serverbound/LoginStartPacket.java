@@ -19,4 +19,13 @@ public final class LoginStartPacket implements Packet {
     public PacketName getName() {
         return PacketName.LOGIN_START;
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof LoginStartPacket) {
+            return username == ((LoginStartPacket) obj).getUsername();
+        } else {
+            return false;
+        }
+    }
 }

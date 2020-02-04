@@ -1,11 +1,6 @@
 package pl.konradmaksymilian.nssvbot.protocol.utils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -13,12 +8,13 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import pl.konradmaksymilian.nssvbot.protocol.ChatComponent;
 import pl.konradmaksymilian.nssvbot.protocol.ChatComponentStyle;
 import pl.konradmaksymilian.nssvbot.protocol.ChatMessage;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
+import pl.konradmaksymilian.nssvbot.protocol.Colour;
+import pl.konradmaksymilian.nssvbot.protocol.Style;
 import pl.konradmaksymilian.nssvbot.utils.InvalidFormatCodeException;
 
 public final class ChatConverter {
 
-    private static final char FORMAT_SYMBOL = '§';
+    private static final char FORMAT_SYMBOL = 167;
     private static final ObjectReader READER;
     
     static {
@@ -73,6 +69,7 @@ public final class ChatConverter {
         
         for (int i = 0; i < text.length(); i++) {
             char character = text.charAt(i);
+            
             if (character == FORMAT_SYMBOL) {
                 if (!isStylingNow) {
                     componentBuilder.text(textBuilder.toString());
@@ -166,75 +163,52 @@ public final class ChatConverter {
     }
     
     private static void addStyle(char code, ChatComponent.Builder builder) {
-        switch (code) {
-            case '0':
-                addColour("black", builder);
-                break;
-            case '1':
-                addColour("dark_blue", builder);
-                break;
-            case '2':
-                addColour("dark_green", builder);
-                break;
-            case '3':
-                addColour("dark_aqua", builder);
-                break;
-            case '4':
-                addColour("dark_red", builder);
-                break;
-            case '5':
-                addColour("dark_purple", builder);
-                break;
-            case '6':
-                addColour("gold", builder);
-                break;
-            case '7':
-                addColour("gray", builder);
-                break;   
-            case '8':
-                addColour("dark_gray", builder);
-                break;
-            case '9':
-                addColour("blue", builder);
-                break;
-            case 'a':
-                addColour("green", builder);
-                break;
-            case 'b':
-                addColour("aqua", builder);
-                break;
-            case 'c':
-                addColour("red", builder);
-                break;
-            case 'd':
-                addColour("light_purple", builder);
-                break;
-            case 'e':
-                addColour("yellow", builder);
-                break;
-            case 'f':
-                addColour("white", builder);
-                break;
-            case 'k':
-                builder.obfuscated(true);
-                break;
-            case 'l':
-                builder.bold(true);
-                break;
-            case 'm':
-                builder.strikethrough(true);
-                break;
-            case 'n':
-                builder.underlined(true);
-                break;
-            case 'o':
-                builder.italic(true);
-                break;
-            case 'r':
-                resetStyle(builder);
-                break;
-            default:
-                throw new InvalidFormatCodeException("Cannot recognize the format code: " + code);
+        if (code == Colour.BLACK.getCode()) {
+            addColour(Colour.BLACK, builder);
+        } else if (code == Colour.BLUE.getCode()) {
+            addColour(Colour.BLUE, builder);
+        } else if (code == Colour.BRIGHT_GREEN.getCode()) {
+            addColour(Colour.BRIGHT_GREEN, builder);
+        } else if (code == Colour.CYAN.getCode()) {
+            addColour(Colour.CYAN, builder);
+        } else if (code == Colour.DARK_BLUE.getCode()) {
+            addColour(Colour.DARK_BLUE, builder);
+        } else if (code == Colour.DARK_CYAN.getCode()) {
+            addColour(Colour.DARK_CYAN, builder);
+        } else if (code == Colour.DARK_GRAY.getCode()) {
+            addColour(Colour.DARK_GRAY, builder);
+        } else if (code == Colour.DARK_GREEN.getCode()) {
+            addColour(Colour.DARK_GREEN, builder);
+        } else if (code == Colour.DARK_RED.getCode()) {
+            addColour(Colour.DARK_RED, builder);
+        } else if (code == Colour.GOLD.getCode()) {
+            addColour(Colour.GOLD, builder);
+        } else if (code == Colour.GRAY.getCode()) {
+            addColour(Colour.GRAY, builder);
+        } else if (code == Colour.PINK.getCode()) {
+            addColour(Colour.PINK, builder);
+        } else if (code == Colour.PURPLE.getCode()) {
+            addColour(Colour.PURPLE, builder);
+        } else if (code == Colour.RED.getCode()) {
+            addColour(Colour.RED, builder);
+        } else if (code == Colour.WHITE.getCode()) {
+            addColour(Colour.WHITE, builder);
+        } else if (code == Colour.YELLOW.getCode()) {
+            addColour(Colour.YELLOW, builder);
+        } else if (code == Style.BOLD.getCode()) {
+            builder.bold(true);   
+        } else if (code == Style.ITALIC.getCode()) {
+            builder.italic(true);   
+        } else if (code == Style.RANDOM.getCode()) {
+            builder.obfuscated(true);   
+        } else if (code == Style.STRIKETHROUGH.getCode()) {
+            builder.strikethrough(true);   
+        } else if (code == Style.UNDERLINED.getCode()) {
+            builder.underlined(true);   
+        } else if (code == Style.RESET.getCode()) {
+            resetStyle(builder);
+        } else {
+            throw new InvalidFormatCodeException("Cannot recognize the format code: " + code);
         }
     }
     
@@ -247,8 +221,8 @@ public final class ChatConverter {
         builder.bold(false);
     }
     
-    private static void addColour(String colour, ChatComponent.Builder builder) {
-        builder.colour(colour);
+    private static void addColour(Colour colour, ChatComponent.Builder builder) {
+        builder.colour(colour.getName());
         builder.italic(false);
         builder.obfuscated(false);
         builder.strikethrough(false);

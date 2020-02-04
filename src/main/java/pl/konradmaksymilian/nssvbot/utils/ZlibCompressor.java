@@ -5,7 +5,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-public final class ZlibCompressor {
+public class ZlibCompressor {
     
     private final Deflater deflater = new Deflater();
     private final Inflater inflater = new Inflater();

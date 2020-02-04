@@ -13,4 +13,13 @@ public final class KeepAliveServerboundPacket extends KeepAlivePacket {
     public PacketName getName() {
         return PacketName.KEEP_ALIVE_SERVERBOUND;
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof KeepAliveServerboundPacket) {
+            return getKeepAliveId() == ((KeepAliveServerboundPacket) obj).getKeepAliveId();
+        } else {
+            return false;
+        }
+    }
 }

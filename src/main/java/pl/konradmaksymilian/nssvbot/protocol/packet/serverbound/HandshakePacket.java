@@ -36,14 +36,27 @@ public final class HandshakePacket implements Packet {
     public int getNextState() {
         return nextState;
     }
+    
+    public static Builder builder() {
+        return new Builder();
+    }
 
     @Override
     public PacketName getName() {
         return PacketName.HANDSHAKE;
     }
     
-    public static Builder builder() {
-        return new Builder();
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HandshakePacket) {
+            var otherHandshake = (HandshakePacket) obj;
+            return protocolVersion == otherHandshake.getProtocolVersion() 
+                    && serverAddress == otherHandshake.getServerAddress()
+                    && serverPort == otherHandshake.getServerPort()
+                    && nextState == otherHandshake.getNextState();
+        } else {
+            return false;
+        }
     }
     
     public static final class Builder {

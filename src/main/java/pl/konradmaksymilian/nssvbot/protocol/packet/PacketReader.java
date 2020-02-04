@@ -3,13 +3,8 @@ package pl.konradmaksymilian.nssvbot.protocol.packet;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.zip.DataFormatException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
@@ -21,11 +16,15 @@ import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
 
 public class PacketReader {
     
-    private final Logger logger = LoggerFactory.getLogger(PacketReader.class);
-    private ZlibCompressor zlib = new ZlibCompressor();
+    private final ZlibCompressor zlib;
+    
     private DataInputStream in;
     private Compression compression;
     private State state;
+    
+    public PacketReader(ZlibCompressor zlib) {
+        this.zlib = zlib;
+    }
     
     public void setInput(DataInputStream in) {
         this.in = in;
@@ -111,15 +110,13 @@ public class PacketReader {
             return Optional.empty();
         }
         
-        return Optional.of(packet); 
+        return Optional.of(packet);
     }
     
     private Optional<Packet> buildPlayPacket(int id, DataInputStream data) throws IOException  {
         Packet packet;
         if (id == PacketName.JOIN_GAME.getId()) {
             packet = PacketBuilder.joinGame(data);
-        } else if (id == PacketName.PLUGIN_MESSAGE_CLIENTBOUND.getId()) {
-            packet = PacketBuilder.pluginMessageClientbound(data);
         } else if (id == PacketName.CHAT_MESSAGE_CLIENTBOUND.getId()) {
             packet = PacketBuilder.chatMessageClientbound(data);
         } else if (id == PacketName.KEEP_ALIVE_CLIENTBOUND.getId()) {
@@ -131,17 +128,7 @@ public class PacketReader {
         } else if (id == PacketName.RESPAWN.getId()) { 
             packet = PacketBuilder.respawn(data);
         } else {
-
-            int[] ids = {68, 46, 13, 70, 44, 58, 7, 9, 6, 51, 74, 22, 56, 71, 20, 78, 32, 63, 5, 60, 54, 79, 25, 0,
-                    62, 67, 72, 76, 50, 33, 38, 40, 39, 34, 30, 24, 27, 19, 49, 52, 73, 77, 65, 64, 12, 11, 18, 10, 2};
-            List<Integer> idsl = new ArrayList<>();
-            for (int i = 0; i < ids.length; i++) {
-                idsl.add(ids[i]);
-            }
-            if (idsl.contains(id)) {
-                return Optional.empty();
-            }
-            throw new RuntimeException("Skipped packet ID: " + id);
+            return Optional.empty();
         }
         
         return Optional.of(packet);

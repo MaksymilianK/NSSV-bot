@@ -1,6 +1,13 @@
 plugins {
     id 'java'
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '5.1.0'
+}
+
+shadowJar {
+   baseName = 'nssv-bot'
+   classifier = null
+   version = null
 }
 
 application {
@@ -12,7 +19,7 @@ repositories {
 }
 
 dependencies {
-	implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+	implementation group: 'com.diogonunes', name: 'JCDP', version: '2.0.3.1'
 	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9.3'
 	testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.1'
 	testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.0.0'

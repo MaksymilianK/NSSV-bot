@@ -35,31 +35,19 @@ public class PacketBuilder {
         return new LoginSuccessPacket(StringConverter.readString(in).getValue(), StringConverter.readString(in).getValue());
     }
     
-    public static PluginMessageClientboundPacket pluginMessageClientbound(DataInputStream in) 
-            throws IOException {
-        String channel = StringConverter.readString(in).getValue();
-        int dataLength = in.available();
-        byte[] data = new byte[dataLength];
-        
-        for (int i = 0; i < dataLength; i++) {
-            data[i] = in.readByte();
-        }
-        String dataString = new String(data, StandardCharsets.UTF_8);
-        
-        return new PluginMessageClientboundPacket(channel, dataString);
-    }
-    
     public static JoinGamePacket joinGame(DataInputStream in) throws IOException {
-        return new JoinGamePacket(in.readInt(), in.readByte(), in.readInt(), in.readByte(), in.readByte(), 
-                StringConverter.readString(in).getValue(), in.readBoolean());
+        in.readInt();
+        in.readByte();
+        in.readInt();
+        in.readByte();
+        in.readByte();
+        StringConverter.readString(in).getValue();
+        in.readBoolean();
+        return new JoinGamePacket();
     }
 
     public static ChatMessageClientboundPacket chatMessageClientbound(DataInputStream in) throws IOException {
         return new ChatMessageClientboundPacket(ChatConverter.convert(StringConverter.readString(in).getValue()));
-    }
-
-    public static ChangeGameStatePacket changeGameState(DataInputStream in) throws IOException {
-        return new ChangeGameStatePacket(in.readByte(), in.readFloat());
     }
 
     public static KeepAliveClientboundPacket keepAliveClientbound(DataInputStream in) throws IOException {
@@ -77,6 +65,10 @@ public class PacketBuilder {
     }
 
     public static RespawnPacket respawn(DataInputStream in) throws IOException {
-        return new RespawnPacket(in.readInt(), in.readByte(), in.readByte(), StringConverter.readString(in).getValue());
+        int dimension = in.readInt();
+        in.readByte();
+        int gamemode = in.readByte();
+        StringConverter.readString(in).getValue();
+        return new RespawnPacket(dimension, gamemode);
     }
 }

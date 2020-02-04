@@ -19,4 +19,13 @@ public final class TeleportConfirmPacket implements Packet {
     public PacketName getName() {
         return PacketName.TELEPORT_CONFIRM;
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof TeleportConfirmPacket) {
+            return teleportId == ((TeleportConfirmPacket) obj).getTeleportId();
+        } else {
+            return false;
+        }
+    }
 }

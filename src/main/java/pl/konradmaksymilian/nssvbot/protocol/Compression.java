@@ -14,9 +14,24 @@ public final class Compression {
     public boolean isCompressed() {
         return compressed;
     }
-
     
     public int getTreshold() {
         return treshold;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (obj != null) {
+            if (obj instanceof Compression) {
+                var otherCompression = (Compression) obj;
+                if (compressed && otherCompression.isCompressed()) {
+                    return treshold == otherCompression.getTreshold();
+                } else if (!compressed && !otherCompression.isCompressed()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+           
     }
 }

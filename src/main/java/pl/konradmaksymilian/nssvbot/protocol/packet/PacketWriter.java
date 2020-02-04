@@ -8,11 +8,8 @@ import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ChatMessageServerboundPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ClientSettingsPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ClientStatusPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HandshakePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.KickPlayerPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.LoginStartPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.RegisterPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.TeleportConfirmPacket;
 import pl.konradmaksymilian.nssvbot.protocol.utils.StringConverter;
 import pl.konradmaksymilian.nssvbot.protocol.utils.VarIntLongConverter;
@@ -22,7 +19,11 @@ public class PacketWriter {
     
     private DataOutputStream out;
     private Compression compression;
-    private ZlibCompressor compressor = new ZlibCompressor();
+    private ZlibCompressor zlib;
+    
+    public PacketWriter(ZlibCompressor zlib) {
+        this.zlib = zlib;
+    }
     
     public void write(Packet packet) {
         var packetName = packet.getName();
@@ -38,13 +39,6 @@ public class PacketWriter {
                 writeKeepAliveServerboundData((KeepAlivePacket) packet, buffer);
             } else if (packetName.equals(PacketName.CHAT_MESSAGE_SERVERBOUND)) {
                 writeChatMessageServerboundData((ChatMessageServerboundPacket) packet, buffer);
-            } else if (packetName.equals(PacketName.PLUGIN_MESSAGE_SERVERBOUND)) {
-                if (((PluginMessageServerboundPacket) packet).getChannel() == "REGISTER") {
-                    writeRegisterData((RegisterPacket) packet, buffer);
-                } else {
-                writeKickPlayerData((KickPlayerPacket) packet, buffer);}
-            } else if (packetName.equals(PacketName.CLIENT_STATUS)) {
-                writeClientStatusData((ClientStatusPacket) packet, buffer);
             } else if (packetName.equals(PacketName.TELEPORT_CONFIRM)) {
                 writeTeleportConfirmData((TeleportConfirmPacket) packet, buffer);
             } else if (packetName.equals(PacketName.CLIENT_SETTINGS)) {
@@ -55,11 +49,6 @@ public class PacketWriter {
         } catch (IOException e) {
             throw new ConnectionException("Error while writing a packet to the output stream", e);
         }
-    }
-    
-    private void writeRegisterData(RegisterPacket packet, DataOutputStream buffer) throws IOException {
-        StringConverter.writeString(packet.getChannel(), buffer);
-        StringConverter.writeString(packet.getNames()[0], buffer);
     }
 
     public void setOutput(DataOutputStream out) {
@@ -87,7 +76,7 @@ public class PacketWriter {
     
     private void writeCompressedPacket(ByteArrayOutputStream buffer, ByteArrayOutputStream uncompressedLengthBuffer) 
             throws IOException {
-        byte[] compressedData = compressor.compress(buffer.toByteArray());
+        byte[] compressedData = zlib.compress(buffer.toByteArray());
         VarIntLongConverter.writeVarInt(uncompressedLengthBuffer.size() + compressedData.length, out);
         out.write(uncompressedLengthBuffer.toByteArray());
         out.write(compressedData);
@@ -124,30 +113,6 @@ public class PacketWriter {
         StringConverter.writeString(packet.getMessage(), buffer);
     }
     
-    private void writeKickPlayerData(KickPlayerPacket packet, DataOutputStream buffer) throws IOException {
-        StringConverter.writeString(packet.getChannel(), buffer);
-        writeString("KickPlayer", buffer);
-        writeString(packet.getNick(), buffer);
-        writeString(packet.getReason(), buffer);
-        
-        /* for (int i = 0; i < packet.getData().size(); i++) {
-            StringConverter.writeString(packet.getData().get(i), buffer);
-            if (i < packet.getData().size() - 1) {
-                buffer.write(0x00);
-            }
-        }*/
-    }
-    
-    private static void writeString(String s, DataOutputStream buffer) throws IOException {
-        byte[] b = s.getBytes();
-        buffer.writeShort(b.length);
-        buffer.writeBytes(s);
-    }
-    
-    private void writeClientStatusData(ClientStatusPacket packet, DataOutputStream buffer) throws IOException {
-        VarIntLongConverter.writeVarInt(0, buffer);
-    }
-    
     private void writeTeleportConfirmData(TeleportConfirmPacket packet, DataOutputStream buffer) throws IOException {
         VarIntLongConverter.writeVarInt(packet.getTeleportId(), buffer);
     }
@@ -157,9 +122,7 @@ public class PacketWriter {
         buffer.writeByte(packet.getViewDistance());
         VarIntLongConverter.writeVarInt(packet.getChatMode(), buffer);
         buffer.writeBoolean(packet.getChatColours());
-        buffer.writeByte(255);
-
-        // buffer.writeByte(packet.getDisplayedSkinParts());
+        buffer.writeByte(packet.getDisplayedSkinParts());
         VarIntLongConverter.writeVarInt(packet.getMainHand(), buffer);
     }
 }

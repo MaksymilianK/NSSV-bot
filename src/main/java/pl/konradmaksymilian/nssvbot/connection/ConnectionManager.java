@@ -5,9 +5,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
 import pl.konradmaksymilian.nssvbot.ObjectConstructionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
@@ -15,21 +12,22 @@ import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketReader;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketWriter;
+import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
 
 public class ConnectionManager {
     
     public static final String HOST = "nssv.pl";
     public static final short PORT = 25565;
 
-    private final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
-    private final PacketReader packetReader = new PacketReader();
-    private final PacketWriter packetWriter = new PacketWriter();
+    private final PacketReader packetReader = new PacketReader(new ZlibCompressor());
+    private final PacketWriter packetWriter = new PacketWriter(new ZlibCompressor());
     private final Queue<Packet> outgoingPackets = new ConcurrentLinkedQueue<>();
     
     private Runnable onEveryConnection;
     private Runnable onEveryDisconnection;
     private Runnable onEveryCheckFinish;
     private Consumer<Packet> onIncomingPacket;
+    private Consumer<String> onInternalMessage;
     
     private boolean touched = false;
     private volatile boolean connected = false;
@@ -57,8 +55,7 @@ public class ConnectionManager {
     
     public ConnectionBuilder connectionBuilder() {
         if (touched) {
-            throw new IllegalMethodInvocationException("Cannot change the ConnectionManager since the connection "
-                    + "starts");
+            throw new IllegalMethodInvocationException("Cannot connect again after connected once");
         }
         return new ConnectionBuilder();
     }
@@ -77,25 +74,20 @@ public class ConnectionManager {
                 setUp(socket);
                 onEveryConnection.run();
                 maintainConnection();
-            } catch (ConnectionException e) {
-                e.printStackTrace();
-                logger.error(e.getMessage());
             } catch (RuntimeException e) {
-                e.printStackTrace();
-                logger.error(e.getMessage());
+                onInternalMessage.accept(e.getMessage());
             }
-            
             connected = false;
             onEveryDisconnection.run();
-            logger.info("Disconnected!");
-            logger.info("Reconnecting to the server...");
+            onInternalMessage.accept("Disconnected!");
+            onInternalMessage.accept("Reconnecting to the server...");
             Thread.sleep(180000 + random.nextInt(120000));
         }
     }
     
     private void setUp(SocketWrapper socket) {
         connected = true;
-        logger.info("Connected to the server!");
+        onInternalMessage.accept("Connected to the server!");
         
         packetReader.setInput(socket.getIn());
         packetWriter.setOutput(socket.getOut());
@@ -134,7 +126,7 @@ public class ConnectionManager {
         }
     }
 
-    public final class ConnectionBuilder {
+    public class ConnectionBuilder {
         
         ConnectionBuilder() {}
         
@@ -174,9 +166,18 @@ public class ConnectionManager {
             return this;
         }
         
+        public ConnectionBuilder onInternalMessage(Consumer<String> onMessage) {
+            if (touched) {
+                throw new IllegalMethodInvocationException("Cannot change the ConnectionManager since the connection "
+                        + "starts");
+            }
+            onInternalMessage = onMessage;
+            return this;
+        }
+        
         public void connect() throws InterruptedException {
             if (onEveryConnection == null || onEveryDisconnection == null || onEveryCheckFinish == null 
-                    || onIncomingPacket == null) {
+                    || onIncomingPacket == null || onInternalMessage == null) {
                 throw new ObjectConstructionException("Connection manager has not been properly initialized");
             }
             doConnect();

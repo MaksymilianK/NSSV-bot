@@ -17,7 +17,7 @@ public final class StringConverter {
         for (int i = 0; i < length.getValue(); i++) {
             bytes[i] = (byte) in.read();
         }
-        return new ReadField<>(new String(bytes), length.getLength() + length.getValue());
+        return new ReadField<>(new String(bytes, StandardCharsets.UTF_8), length.getLength() + length.getValue());
     }
     
     public static void writeString(String text, OutputStream out) throws IOException {
