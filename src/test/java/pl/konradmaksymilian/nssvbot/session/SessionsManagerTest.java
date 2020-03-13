@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -16,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
+import pl.konradmaksymilian.nssvbot.config.PlayerConfig;
+import pl.konradmaksymilian.nssvbot.config.PlayerConfigReader;
 import pl.konradmaksymilian.nssvbot.management.Player;
 import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
 import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
@@ -32,6 +35,9 @@ public class SessionsManagerTest {
 
     @Mock
     private SessionFactory sessionFactory;
+
+    @Mock
+    private PlayerConfigReader playerConfigReader;
     
     @Mock
     private Consumer<Object> onMessage;
@@ -43,38 +49,17 @@ public class SessionsManagerTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         when(sessionFactory.create()).thenReturn(session);
-        config = new Properties();
-        config.put("player1", "pass1, p1");
-        config.put("player2", "pass2");
-        config.put("player3", "pass3, p3");
+
+        PlayerConfig config = PlayerConfig.builder()
+                .add(new Player("player1", "pass1", "p1"))
+                .add(new Player("player2", "pass2", null))
+                .add(new Player("player3", "pass3", "p3"))
+                .build();
+        when(playerConfigReader.read()).thenReturn(Optional.of(config));
         
-        sessionsManager = new SessionsManager(sessionFactory);
+        sessionsManager = new SessionsManager(sessionFactory, playerConfigReader);
         sessionsManager.onMessage(this.onMessage);
-        sessionsManager.setPlayers(config);
-    }
-    
-    @Test
-    public void initializingPlayersFromProperties() {
-        var players = sessionsManager.getPlayers();
-        assertThat(players).hasSize(3);
-        assertThat(sessionsManager.getPlayers()).anyMatch(player -> {
-            if (player.getAlias().isEmpty()) {
-                return false;
-            } else {
-                return player.getNick().equals("player1") && player.getPassword().equals("pass1") 
-                        && player.getAlias().get().equals("p1");
-            }
-        });
-        assertThat(sessionsManager.getPlayers()).anyMatch(player -> player.getNick().equals("player2") 
-                && player.getPassword().equals("pass2") && player.getAlias().isEmpty());
-        assertThat(sessionsManager.getPlayers()).anyMatch(player -> {
-            if (player.getAlias().isEmpty()) {
-                return false;
-            } else {
-                return player.getNick().equals("player3") && player.getPassword().equals("pass3") 
-                        && player.getAlias().get().equals("p3");
-            }
-        });
+        sessionsManager.init();
     }
     
     @Test

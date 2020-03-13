@@ -1,20 +1,16 @@
 package pl.konradmaksymilian.nssvbot.session;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
-import pl.konradmaksymilian.nssvbot.management.ConfigException;
+import pl.konradmaksymilian.nssvbot.config.ConfigException;
+import pl.konradmaksymilian.nssvbot.config.PlayerConfig;
+import pl.konradmaksymilian.nssvbot.config.PlayerConfigReader;
 import pl.konradmaksymilian.nssvbot.management.Player;
 import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
 import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
 import pl.konradmaksymilian.nssvbot.management.command.active.AdCommandActive;
-import pl.konradmaksymilian.nssvbot.management.command.active.LeaveCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.detached.AdCommandDetached;
 import pl.konradmaksymilian.nssvbot.management.command.detached.LeaveCommandDetached;
 
@@ -22,28 +18,27 @@ public class SessionsManager {
 
     private final Set<Session> sessions = new HashSet<>();
     private final Map<String, Thread> threads = new HashMap<>();
-    private final Set<Player> players = new HashSet<>();
     private final SessionFactory sessionFactory;
-    
+    private final PlayerConfigReader playerConfigReader;
+
+    private Set<Player> players;
     private Consumer<Object> onMessage;
     private JoinCommand waitingJoinCommand = null;
     private Session active = null;
     
-    public SessionsManager(SessionFactory sessionFactory) {
+    public SessionsManager(SessionFactory sessionFactory, PlayerConfigReader playerConfigReader) {
         this.sessionFactory = sessionFactory;
+        this.playerConfigReader = playerConfigReader;
     }
     
-    public void setPlayers(Properties players) {
-        players.forEach((nick, data) -> {
-            String[] playerData = ((String) data).split(", ");
-            if (playerData.length == 1) {
-                addPlayer((String) nick, playerData[0], null);
-            } else if (playerData.length == 2) {
-                addPlayer((String) nick, playerData[0], playerData[1]);
-            } else {
-                throw new ConfigException("Data is not valid; player with nick: '" + nick + "' cannot be initialized");
-            }
-        });
+    public void init() {
+        var config = playerConfigReader.read();
+        if (config.isPresent()) {
+            players = config.get().getPlayers();
+        } else {
+            players = Collections.emptySet();
+            onMessage.accept(PlayerConfigReader.FILE + " configuration file has not been found");
+        }
     }
     
     public void onMessage(Consumer<Object> onMessage) {

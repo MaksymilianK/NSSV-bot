@@ -45,7 +45,6 @@ public class AppManagerTest {
     @Test
     public void initializingSessionsManager() {
         verify(sessionsManager).onMessage(any());
-        verify(sessionsManager).setPlayers(any());
     }
     
     @Test

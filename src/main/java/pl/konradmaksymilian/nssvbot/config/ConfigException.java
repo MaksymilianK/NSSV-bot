@@ -1,4 +1,4 @@
-package pl.konradmaksymilian.nssvbot.management;
+package pl.konradmaksymilian.nssvbot.config;
 
 public class ConfigException extends RuntimeException {
 

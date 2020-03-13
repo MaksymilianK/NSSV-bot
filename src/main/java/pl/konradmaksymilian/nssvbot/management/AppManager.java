@@ -32,17 +32,8 @@ public class AppManager {
     }
     
     private void initSessionsManager() {
-        var config = new Properties();
-        try {
-            config.load(new FileInputStream("./players.properties"));
-        } catch (FileNotFoundException e) {
-            console.writeLine("File with players data has not been found", true);
-        } catch (IOException e) {
-            console.writeLine("Error while reading players data", true);
-        } finally {
-            sessionsManager.onMessage(this::onMessage);
-            sessionsManager.setPlayers(config);
-        }
+        sessionsManager.onMessage(this::onMessage);
+        sessionsManager.init();
     }
 
     private void initConsole() {

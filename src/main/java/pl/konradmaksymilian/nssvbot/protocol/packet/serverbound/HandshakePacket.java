@@ -21,17 +21,14 @@ public final class HandshakePacket implements Packet {
     public int getProtocolVersion() {
         return protocolVersion;
     }
-
     
     public String getServerAddress() {
         return serverAddress;
     }
-
     
     public short getServerPort() {
         return serverPort;
     }
-
     
     public int getNextState() {
         return nextState;
