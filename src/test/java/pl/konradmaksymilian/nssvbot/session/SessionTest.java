@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -58,13 +59,11 @@ public class SessionTest {
     private Runnable onEveryCheckFinish;
     
     private Runnable onEveryConnection;
-    
-    private Runnable onEveryDisconnection;
-    
+
+    private Consumer<AbstractMap.SimpleImmutableEntry<String, Integer>> onEveryDisconnection;
+
     private Consumer<Packet> onIncomingPacket;
-    
-    private Consumer<String> onInternalMessage;
-    
+
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.initMocks(this);
@@ -87,11 +86,6 @@ public class SessionTest {
         
         when(connectionBuilder.onIncomingPacket(any())).thenAnswer(invocation -> {
             onIncomingPacket = invocation.getArgument(0);
-            return connectionBuilder;
-        });
-        
-        when(connectionBuilder.onInternalMessage(any())).thenAnswer(invocation -> {
-            onInternalMessage = invocation.getArgument(0);
             return connectionBuilder;
         });
         
@@ -129,6 +123,13 @@ public class SessionTest {
                 .serverPort((short) 25565)
                 .build());
     }
+
+    @Test
+    public void sendInternalMessageOnConnectionStart() throws InterruptedException {
+        onEveryConnection.run();
+
+        verify(onMessage).accept("Player 'GeniuszMistrz' has connected to the server");
+    }
     
     @Test
     public void setNewStateAfterHandshake() throws InterruptedException {        
@@ -149,23 +150,6 @@ public class SessionTest {
         onEveryConnection.run();
         
         verify(connection).sendPacket(new LoginStartPacket("GeniuszMistrz"));
-    }
-    
-    @Test
-    public void passMessageOnInternalMessageIfActive() {
-        session.setActive(true);
-        String message = "message";
-        
-        onInternalMessage.accept(message);
-        
-        verify(onMessage).accept(message);
-    }
-    
-    @Test
-    public void doNothingOnInternalMessageIfNotActive() {
-        onInternalMessage.accept("message");
-        
-        verify(onMessage, never()).accept(any());
     }
     
     @Test
@@ -274,8 +258,7 @@ public class SessionTest {
     }
     
     @Test
-    public void sendInternalMessageOnDisconnectPlayPacketIfActive() {
-        session.setActive(true);
+    public void sendInternalMessageOnDisconnectPlayPacket() {
         var component = ChatComponent.builder()
                 .text("disconnect reason")
                 .bold(true)             //styles are random
@@ -287,30 +270,12 @@ public class SessionTest {
         var reasonMessage = ChatMessage.builder().append(component).build();
         
         onIncomingPacket.accept(new DisconnectPlayPacket(reasonMessage));
-        
-        verify(onMessage).accept("Disconnected by the server - reason: disconnect reason");
+
+        verify(onMessage).accept("Player 'GeniuszMistrz' has been disconnected by the server - reason: disconnect reason");
     }
     
     @Test
-    public void doNotSendInternalMessageOnDisconnectPlayPacketIfNotActive() {
-        var component = ChatComponent.builder()
-                .text("disconnect reason")
-                .bold(true)             //styles are random
-                .italic(false)
-                .obfuscated(true)
-                .strikethrough(false)
-                .underlined(false)
-                .build();
-        var reasonMessage = ChatMessage.builder().append(component).build();
-        
-        onIncomingPacket.accept(new DisconnectPlayPacket(reasonMessage));
-        
-        verify(onMessage, never()).accept("Disconnected by the server - reason: disconnect reason");
-    }
-    
-    @Test
-    public void sendInternalMessageOnDisconnectLoginPacketIfActive() {
-        session.setActive(true);
+    public void sendInternalMessageOnDisconnectLoginPacket() {
         var component = ChatComponent.builder()
                 .text("disconnect reason")
                 .bold(true)             //styles are random
@@ -322,25 +287,24 @@ public class SessionTest {
         var reasonMessage = ChatMessage.builder().append(component).build();
         
         onIncomingPacket.accept(new DisconnectLoginPacket(reasonMessage));
-        
-        verify(onMessage).accept("Disconnected by the server - reason: disconnect reason");
+
+        verify(onMessage).accept("Player 'GeniuszMistrz' has been disconnected by the server - reason: disconnect reason");
     }
-    
+
     @Test
-    public void doNotSendInternalMessageOnDisconnectLoginPacketIfNotActive() {
-        var component = ChatComponent.builder()
-                .text("disconnect reason")
-                .bold(true)             //styles are random
-                .italic(false)
-                .obfuscated(true)
-                .strikethrough(false)
-                .underlined(false)
-                .build();
-        var reasonMessage = ChatMessage.builder().append(component).build();
-        
-        onIncomingPacket.accept(new DisconnectLoginPacket(reasonMessage));
-        
-        verify(onMessage, never()).accept("Disconnected by the server - reason: disconnect reason");
+    public void sendInternalMessageWithReasonAndTimeOnDisconnectionIfThereIsReason() {
+        onEveryDisconnection.accept(new AbstractMap.SimpleImmutableEntry<>("disconnect reason", 150));
+
+        verify(onMessage).accept("Player 'GeniuszMistrz' has lost connection: disconnect reason");
+        verify(onMessage).accept("Player 'GeniuszMistrz' will try to reconnect in 150 seconds");
+    }
+
+    @Test
+    public void sendInternalMessageWithOnlyTimeOnDisconnectionIfThereIsNoReason() {
+        onEveryDisconnection.accept(new AbstractMap.SimpleImmutableEntry<>("", 150));
+
+        verify(onMessage, never()).accept("Player 'GeniuszMistrz' has lost connection: ");
+        verify(onMessage).accept("Player 'GeniuszMistrz' will try to reconnect in 150 seconds");
     }
     
     @Test
@@ -436,7 +400,7 @@ public class SessionTest {
         
         onEveryCheckFinish.run();
         
-        verify(onMessage).accept("Server has not responded for 20s");
+        verify(onMessage).accept("Server has not responded to player 'GeniuszMistrz' for 20 seconds");
     }
     
     @Test

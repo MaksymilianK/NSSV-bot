@@ -78,7 +78,7 @@ public class AppManagerTest {
         
         onInput.accept("!join player1");
         
-        verify(console).write("Password: ", false);
+        verify(console).writeLine("Password: ", false);
     }
     
     @Test

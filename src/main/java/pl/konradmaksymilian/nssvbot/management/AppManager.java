@@ -143,7 +143,6 @@ public class AppManager {
     
     private void onLeaveDetached(LeaveCommandDetached command) {
         sessionsManager.leaveDetached(command);
-        console.writeLine("The player has left the server", true);
     }
     
     private void writeStatus() {

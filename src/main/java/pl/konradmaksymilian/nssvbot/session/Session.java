@@ -1,7 +1,7 @@
 package pl.konradmaksymilian.nssvbot.session;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.Random;
 import java.util.function.Consumer;
 
@@ -45,22 +45,21 @@ public class Session {
     
     public void joinServer(Player player, Consumer<Object> onMessage) {
         if (this.player != null || this.onMessage != null) {
-            throw new IllegalMethodInvocationException("Cannot join server once again");
+            throw new IllegalMethodInvocationException("Cannot join the server once again");
         }
         
         this.player = player;
         this.onMessage = onMessage;
         
         var connectionBuilder = connection.connectionBuilder()
-                .onEveryConnection(this::onConnection)
+                .onEveryConnection(this::onEveryConnection)
                 .onEveryCheckFinish(this::onEveryCheck)
-                .onEveryDisconnection(this::onDisconnection)
-                .onIncomingPacket(this::onPacket)
-                .onInternalMessage(this::onInternalMessage);
+                .onEveryDisconnection(this::onEveryDisconnection)
+                .onIncomingPacket(this::onPacket);
         try {
             connectionBuilder.connect();
         } catch (InterruptedException e) {
-            onMessage.accept("The session has been closed!");
+            onMessage.accept("Player '" + player.getNick() + "' has left the server");
         }
     }
     
@@ -103,10 +102,11 @@ public class Session {
         timer.setTimeToNow("nextPossibleAttempt");
     }
     
-    private void onConnection() {
+    private void onEveryConnection() {
         timer.setTimeToNow("lastKeepAlive");
         connection.setCompression(new Compression(false, Integer.MAX_VALUE));
         connection.setState(State.HANDSHAKING);
+        onMessage.accept("Player '" + player.getNick() + "' has connected to the server");
         this.join();
     }
     
@@ -118,7 +118,8 @@ public class Session {
     
     private void checkKeepAlive() {
         if (timer.isNowAfterDuration("lastKeepAlive", "keepAlive")) {
-            onMessage.accept("Server has not responded for " + timer.getDuration("keepAlive").toSeconds() + "s");
+            onMessage.accept("Server has not responded to player '" + player.getNick() + "' for "
+                    + timer.getDuration("keepAlive").toSeconds() + " seconds");
             connection.disconnect();
         }
     }
@@ -144,8 +145,12 @@ public class Session {
         }
     }
     
-    private void onDisconnection() {
+    private void onEveryDisconnection(AbstractMap.SimpleImmutableEntry<String, Integer> info) {
         changeStatus(Status.DISCONNECTED);
+        if (!info.getKey().isEmpty()) {
+            onMessage.accept("Player '" + player.getNick() + "' has lost connection: " + info.getKey());
+        }
+        onMessage.accept("Player '" + player.getNick() + "' will try to reconnect in " + info.getValue() + " seconds");
     }
     
     private void onPacket(Packet packet) {
@@ -176,12 +181,6 @@ public class Session {
                 break;
             default:
                //do nothing... just skip the packet
-        }
-    }
-    
-    private void onInternalMessage(String message) {
-        if (isActive) {
-            onMessage.accept(message);
         }
     }
     
@@ -219,9 +218,9 @@ public class Session {
     }
     
     private void onDisconnectPacket(DisconnectPacket packet) {
-        if (isActive) {
-            onMessage.accept("Disconnected by the server - reason: " + packet.getReason());
-        }
+        onMessage.accept("Player '" + player.getNick() + "' has been disconnected by the server - reason: "
+                + packet.getReason());
+
         connection.disconnect();
     }
     
