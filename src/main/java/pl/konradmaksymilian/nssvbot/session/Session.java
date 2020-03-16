@@ -99,7 +99,7 @@ public class Session {
     private void setUpTimer() {
         timer.setTimeToNow("lastKeepAlive");
         timer.setDuration("keepAlive", Duration.ofSeconds(20));
-        timer.setTimeToNow("nextPossibleAttempt");
+        timer.setTimeToNow("nextLoginAttempt");
     }
     
     private void onEveryConnection() {
@@ -111,7 +111,7 @@ public class Session {
     }
     
     private void onEveryCheck() {
-        checkKeepAlive();
+        //checkKeepAlive();
         checkAdvert();
         checkStatus();
     }
@@ -134,7 +134,7 @@ public class Session {
     }
     
     private void checkStatus() {
-        if (status.equals(Status.GAME) || !timer.isNowAfter("nextPossibleAttempt")) {
+        if (status.equals(Status.GAME) || !timer.isNowAfter("nextLoginAttempt")) {
             return;
         } else if (status.equals(Status.LOGIN)) {
             delayNextAttempt();
@@ -261,10 +261,10 @@ public class Session {
     
     private void changeStatus(Status newStatus) {
         status = newStatus;
-        timer.setTimeToNow("nextPossibleAttempt");
+        timer.setTimeToNow("nextLoginAttempt");
     }
     
     private void delayNextAttempt() {
-        timer.setTime("nextPossibleAttempt", timer.getNow().plusSeconds(60 + random.nextInt(120)));
+        timer.setTime("nextLoginAttempt", timer.getNow().plusSeconds(60 + random.nextInt(120)));
     }
 }
