@@ -3,11 +3,7 @@ package pl.konradmaksymilian.nssvbot.management;
 import java.util.Arrays;
 import java.util.Optional;
 
-import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
-import pl.konradmaksymilian.nssvbot.management.command.Command;
-import pl.konradmaksymilian.nssvbot.management.command.CommandReadingException;
-import pl.konradmaksymilian.nssvbot.management.command.DetachCommand;
-import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
+import pl.konradmaksymilian.nssvbot.management.command.*;
 import pl.konradmaksymilian.nssvbot.management.command.active.AdCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.active.LeaveCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.detached.AdCommandDetached;
@@ -19,7 +15,7 @@ public final class CommandReader {
     
     /**
      * @return optional of command or empty optional if it is not a command
-     * @throws {@link CommandReadingException} if command is invalid
+     * @throws {@link CommandReadingException} if the command is invalid
      */
     public static Optional<Command> read(String line, boolean isSessionActive) {
         if (!startsWithExclamationMark(line)) {
@@ -28,36 +24,44 @@ public final class CommandReader {
         
         String[] parts = line.substring(1).split(" "); //the first sign is '!' so it needs to be removed
         var commandPayload = Arrays.copyOfRange(parts, 1, parts.length);
-        
+
+        return Optional.of(buildCommand(parts[0], commandPayload, isSessionActive));
+    }
+
+    private static Command buildCommand(String name, String[] payload, boolean isSessionActive) {
         Command command;
-        switch (parts[0]) {
+
+        switch (name) {
             case "join":
-                command = buildJoinCommand(commandPayload);
+                command = buildJoinCommand(payload);
+                break;
+            case "dealer":
+                command = buildDealerJoinCommand(payload);
                 break;
             case "attach":
-                command = buildAttachCommand(commandPayload);
+                command = buildAttachCommand(payload);
                 break;
             case "detach":
-                command = buildDetachCommand(commandPayload);
+                command = buildDetachCommand(payload);
                 break;
             case "ad":
                 if (isSessionActive) {
-                    command = buildAdCommandActive(commandPayload);
+                    command = buildAdCommandActive(payload);
                 } else {
-                    command = buildAdCommandDetached(commandPayload);
+                    command = buildAdCommandDetached(payload);
                 }
                 break;
             case "leave":
                 if (isSessionActive) {
-                    command = buildLeaveCommandActive(commandPayload);
+                    command = buildLeaveCommandActive(payload);
                 } else {
-                    command = buildLeaveCommandDetached(commandPayload);
+                    command = buildLeaveCommandDetached(payload);
                 }
                 break;
             default:
-                throw new CommandReadingException("The name: '" + parts[0] + "' is unknown - there is no such a command");
+                throw new CommandReadingException("The name: '" + name + "' is unknown - there is no such a command");
         }
-        return Optional.of(command);
+        return command;
     }
     
     private static boolean startsWithExclamationMark(String line) {
@@ -70,7 +74,14 @@ public final class CommandReader {
         } else {
             throw new CommandReadingException("Command 'join [nickOrAlias]' is too long");
         }
-        
+    }
+
+    private static DealerJoinCommand buildDealerJoinCommand(String[] parts) {
+        if (parts.length == 1) {
+            return new DealerJoinCommand(parts[0]);
+        } else {
+            throw new CommandReadingException("Command 'dealer [nickOrAlias]' is too long");
+        }
     }
     
     private static AttachCommand buildAttachCommand(String[] parts) {

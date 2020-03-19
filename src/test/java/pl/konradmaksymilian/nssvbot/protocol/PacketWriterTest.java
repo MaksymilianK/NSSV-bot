@@ -1,6 +1,7 @@
 package pl.konradmaksymilian.nssvbot.protocol;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
@@ -9,6 +10,7 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -35,29 +37,30 @@ public class PacketWriterTest {
         
         packetWriter.setCompression(new Compression(false, Integer.MAX_VALUE));
     }
-    
+
+    @Test
     public void compressIfCompressionSetToTrueAndLengthGraterThanTreshold() throws IOException {
         packetWriter.setCompression(new Compression(true, 10));
         var out = new ByteArrayOutputStream();
         packetWriter.setOutput(new DataOutputStream(out));
-        byte[] packetBytes = {0x0b, 0x02, 0x09, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69};
         byte[] compressedBytes = {0x00, 0x01, 0x02}; //does not make any sense - just for stubbing
-        when(zlib.compress(packetBytes)).thenReturn(compressedBytes);
+        when(zlib.compress(any())).thenReturn(compressedBytes);
         
         packetWriter.write(new ChatMessageServerboundPacket("abcdefghi"));
         
-        assertThat(out.toByteArray()).isEqualTo(compressedBytes);
+        assertThat(out.toByteArray()).containsExactly(4, 11, 0, 1, 2);
     }
-    
-    public void doNotCompressIfCompressionSetToTrueAndLengthEqualToTreshold() throws IOException {
-        packetWriter.setCompression(new Compression(true, 11));
+
+    @Test
+    public void doNotCompressIfCompressionSetToTrueAndLengthLessThanTreshold() throws IOException {
+        packetWriter.setCompression(new Compression(true, 12));
         var out = new ByteArrayOutputStream();
         packetWriter.setOutput(new DataOutputStream(out));
         
         packetWriter.write(new ChatMessageServerboundPacket("abcdefghi"));
         
-        assertThat(out.toByteArray()).containsExactly(0x0b, 0x02, 0x09, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68,
-                0x69);
+        assertThat(out.toByteArray()).containsExactly(0x0c, 0x00, 0x02, 0x09, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+                0x68, 0x69);
     }
     
     @Test

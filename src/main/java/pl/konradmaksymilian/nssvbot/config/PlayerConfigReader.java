@@ -2,12 +2,11 @@ package pl.konradmaksymilian.nssvbot.config;
 
 import pl.konradmaksymilian.nssvbot.management.Player;
 
-import java.net.URL;
 import java.util.Optional;
 
 public class PlayerConfigReader extends PropertiesConfigReader<PlayerConfig> {
 
-    public static final String FILE = "./players.properties";
+    public static final String FILE = "players.properties";
 
     @Override
     public Optional<PlayerConfig> read() {

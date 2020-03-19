@@ -25,8 +25,9 @@ public final class ChatConverter {
     private ChatConverter() {}
     
     public static ChatMessage convert(String jsonData) throws IOException {
-        var tree = READER.readTree(jsonData);
         var builder = ChatMessage.builder();
+        var tree = READER.readTree(jsonData);
+
         appendChatComponent(tree, new ChatComponentStyle(false, false, false, false, false, null), builder);
         return builder.build();
     }

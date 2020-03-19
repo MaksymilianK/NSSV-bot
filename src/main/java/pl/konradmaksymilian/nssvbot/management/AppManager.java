@@ -1,15 +1,8 @@
 package pl.konradmaksymilian.nssvbot.management;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Properties;
 import java.util.concurrent.Executors;
 
-import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
-import pl.konradmaksymilian.nssvbot.management.command.Command;
-import pl.konradmaksymilian.nssvbot.management.command.CommandReadingException;
-import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
+import pl.konradmaksymilian.nssvbot.management.command.*;
 import pl.konradmaksymilian.nssvbot.management.command.active.AdCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.active.LeaveCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.detached.AdCommandDetached;
@@ -79,6 +72,9 @@ public class AppManager {
             case JOIN:
                 onJoin((JoinCommand) command);
                 break;
+            case DEALER_JOIN:
+                onJoin((DealerJoinCommand) command);
+                break;
             case ATTACH:
                 onAttach((AttachCommand) command);
                 break;
@@ -104,7 +100,7 @@ public class AppManager {
 
     private void onJoin(JoinCommand command) {
         if (sessionsManager.join(command)) {
-            console.writeLine("Player '" + command.getNickOrAlias() + "' is joining server...", true);
+            console.writeLine("Player '" + command.getNickOrAlias() + "' is joining the server...", true);
             console.writeBlankLine();
         } else {
             console.writeLine("Password: ", false);

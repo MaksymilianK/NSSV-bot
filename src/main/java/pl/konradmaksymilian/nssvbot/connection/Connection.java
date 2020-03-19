@@ -5,13 +5,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-class SocketWrapper implements AutoCloseable {
+class Connection implements AutoCloseable {
     
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
     
-    public SocketWrapper(String host, int port) {
+    public Connection(String host, int port) {
         try {
             socket = new Socket(host, port);
             in = new DataInputStream(socket.getInputStream());

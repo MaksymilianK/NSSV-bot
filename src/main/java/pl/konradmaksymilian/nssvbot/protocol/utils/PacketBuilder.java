@@ -2,20 +2,10 @@ package pl.konradmaksymilian.nssvbot.protocol.utils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChangeGameStatePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectLoginPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectPlayPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.JoinGamePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.KeepAliveClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.LoginSuccessPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAndLookPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PluginMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.RespawnPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.SetCompressionPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 
 public class PacketBuilder {
         
@@ -55,13 +45,16 @@ public class PacketBuilder {
     }
 
     public static Packet playerPositionAndLook(DataInputStream in) throws IOException {
-        in.readDouble();
-        in.readDouble();
-        in.readDouble();
-        in.readFloat();
-        in.readFloat();
+        var builder = PlayerPositionAndLookClientboundPacket.builder()
+                .x(in.readDouble())
+                .feetY(in.readDouble())
+                .z(in.readDouble())
+                .yaw(in.readFloat())
+                .pitch(in.readFloat());
         in.readByte();
-        return new PlayerPositionAndLookPacket(VarIntLongConverter.readVarInt(in).getValue());
+        return builder
+                .teleportId(VarIntLongConverter.readVarInt(in).getValue())
+                .build();
     }
 
     public static RespawnPacket respawn(DataInputStream in) throws IOException {
@@ -70,5 +63,15 @@ public class PacketBuilder {
         int gamemode = in.readByte();
         StringConverter.readString(in).getValue();
         return new RespawnPacket(dimension, gamemode);
+    }
+
+    public static void upEn(DataInputStream in) throws IOException {
+        long i = in.readLong();
+        long x = (i & 0b1111111111111111111111111100000000000000000000000000000000000000L) >> 38; //first 26 bits
+        long y = ((i << 26) & 0b1111111111110000000000000000000000000000000000000000000000000000L) >> 52; //middle 12 bits
+        long z = ((i << 38) & 0b1111111111111111111111111100000000000000000000000000000000000000L) >> 38; // last 26 bits
+
+        if (y == 2) System.out.print(x + " " + y + " " + z + "\n");
+        in.readAllBytes();
     }
 }
