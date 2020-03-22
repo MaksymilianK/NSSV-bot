@@ -6,7 +6,9 @@ import java.io.IOException;
 
 import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
+import pl.konradmaksymilian.nssvbot.protocol.Position;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
+import pl.konradmaksymilian.nssvbot.protocol.utils.PositionConverter;
 import pl.konradmaksymilian.nssvbot.protocol.utils.StringConverter;
 import pl.konradmaksymilian.nssvbot.protocol.utils.VarIntLongConverter;
 import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
@@ -66,8 +68,11 @@ public class PacketWriter {
             case PLAYER_LOOK:
                 writePlayerLook((PlayerLookPacket) packet, buffer);
                 break;
-            case USE_ENTITY:
-                writeUseEntity((UseEntityPacket) packet, buffer);
+            case PLAYER_DIGGING:
+                writePlayerDigging((PlayerDiggingPacket) packet, buffer);
+                break;
+            case PLAYER_BLOCK_PLACEMENT:
+                writePlayerBlockPlacement((PlayerBlockPlacementPacket) packet, buffer);
                 break;
             default:
                 throw new UnrecognizedPacketException("Cannot write the packet '" + packet.getName() + "'");
@@ -154,14 +159,19 @@ public class PacketWriter {
         buffer.writeBoolean(packet.isOnGround());
     }
 
-    private void writeUseEntity(UseEntityPacket packet, DataOutputStream buffer) throws IOException {
-        VarIntLongConverter.writeVarInt(-1, buffer);
-        VarIntLongConverter.writeVarInt(packet.getType(), buffer);
-        if (packet.getTargetX().isPresent()) {
-            buffer.writeFloat(packet.getTargetX().get());
-            buffer.writeFloat(packet.getTargetY().get());
-            buffer.writeFloat(packet.getTargetZ().get());
-            VarIntLongConverter.writeVarInt(packet.getHand().get(), buffer);
-        }
+    private void writePlayerDigging(PlayerDiggingPacket packet, DataOutputStream buffer) throws IOException {
+        VarIntLongConverter.writeVarInt(packet.getStatus(), buffer);
+        PositionConverter.write(packet.getLocation(), buffer);
+        buffer.writeByte(packet.getFace());
+    }
+
+
+    private void writePlayerBlockPlacement(PlayerBlockPlacementPacket packet, DataOutputStream buffer) throws IOException {
+        PositionConverter.write(packet.getLocation(), buffer);
+        VarIntLongConverter.writeVarInt(packet.getFace(), buffer);
+        VarIntLongConverter.writeVarInt(packet.getHand(), buffer);
+        buffer.writeFloat(packet.getCursorX());
+        buffer.writeFloat(packet.getCursorY());
+        buffer.writeFloat(packet.getCursorZ());
     }
 }

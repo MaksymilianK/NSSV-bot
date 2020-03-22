@@ -131,7 +131,6 @@ public class PacketReader {
         } else {
             return Optional.empty();
         }
-        
         return Optional.of(packet);
     }
 }

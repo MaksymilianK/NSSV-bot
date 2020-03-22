@@ -2,13 +2,12 @@ package pl.konradmaksymilian.nssvbot.protocol.utils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 
 public class PacketBuilder {
-        
+
     public static DisconnectLoginPacket disconnectLogin(DataInputStream in) throws IOException {
         return new DisconnectLoginPacket(ChatConverter.convert(StringConverter.readString(in).getValue()));
     }
@@ -63,15 +62,5 @@ public class PacketBuilder {
         int gamemode = in.readByte();
         StringConverter.readString(in).getValue();
         return new RespawnPacket(dimension, gamemode);
-    }
-
-    public static void upEn(DataInputStream in) throws IOException {
-        long i = in.readLong();
-        long x = (i & 0b1111111111111111111111111100000000000000000000000000000000000000L) >> 38; //first 26 bits
-        long y = ((i << 26) & 0b1111111111110000000000000000000000000000000000000000000000000000L) >> 52; //middle 12 bits
-        long z = ((i << 38) & 0b1111111111111111111111111100000000000000000000000000000000000000L) >> 38; // last 26 bits
-
-        if (y == 2) System.out.print(x + " " + y + " " + z + "\n");
-        in.readAllBytes();
     }
 }
