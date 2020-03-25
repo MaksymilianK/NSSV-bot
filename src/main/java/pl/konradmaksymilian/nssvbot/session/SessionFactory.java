@@ -24,7 +24,7 @@ public class SessionFactory {
             throw new SessionException("Cannot create dealer session - configuration has not been found");
         }
 
-        return new DealerSession(new ConnectionManager(500, new PacketReader(zlib), new PacketWriter(zlib)), new Timer(),
+        return new DealerSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer(),
                 config.get());
     }
 }

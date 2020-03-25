@@ -13,12 +13,7 @@ import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.KeepAlivePacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ChatMessageServerboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ClientSettingsPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HandshakePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.KeepAliveServerboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.LoginStartPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.TeleportConfirmPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 
 public abstract class Session {
@@ -26,11 +21,14 @@ public abstract class Session {
     protected final ConnectionManager connection;
     protected final Random random = new Random();
 
+    protected int playerEid;
     protected Consumer<Object> onMessage;
     protected Player player;
     protected Timer timer;
     protected Status status = Status.DISCONNECTED;
     protected boolean isActive = false;
+
+    private String code = null;
 
     public Session(ConnectionManager connection, Timer timer) {
         this.connection = connection;
@@ -42,7 +40,6 @@ public abstract class Session {
         if (this.player != null || this.onMessage != null) {
             throw new IllegalMethodInvocationException("Cannot join the server once again");
         }
-        
         this.player = player;
         this.onMessage = onMessage;
         
@@ -80,8 +77,8 @@ public abstract class Session {
     
     protected void setUpTimer() {
         timer.setTimeToNow("lastKeepAlive");
-        timer.setDuration("keepAlive", Duration.ofSeconds(20));
         timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(500));
+        timer.setDuration("keepAlive", Duration.ofSeconds(30));
     }
     
     protected void onEveryConnection() {
@@ -101,11 +98,17 @@ public abstract class Session {
         if (status.equals(Status.GAME) || !timer.isNowAfter("nextPossibleAttempt")) {
             return;
         } else if (status.equals(Status.LOGIN)) {
-            delayNextAttempt();
             sendChatMessage("/login " + player.getPassword());
-        } else if (status.equals(Status.HUB)) {
             delayNextAttempt();
+        } else if (status.equals(Status.HUB)) {
             sendChatMessage("/polacz reallife");
+            delayNextAttempt();
+        } else if (status.equals(Status.JOINING)) {
+            if (code != null) {
+                sendChatMessage(code.trim());
+            }
+            status = Status.HUB;
+            delayNextAttempt();
         }
     }
 
@@ -157,16 +160,17 @@ public abstract class Session {
         if (isActive) {
             onMessage.accept(packet.getMessage());
         }
-        
-        if (status.equals(Status.LOGIN)) {
-            var firstPart = packet.getMessage().getComponents().get(0);
-            if (firstPart.getStyle().getColour().isPresent() && firstPart.getText().startsWith("Zalogowano.")) {
-                changeStatus(Status.HUB);
-            }
+
+        if (status.equals(Status.HUB) && packet.toString().endsWith("botem.")) {
+            code = packet.getMessage().getComponents().get(5).getText();
+            changeStatus(Status.JOINING);
+        } else if (status.equals(Status.LOGIN) && packet.toString().endsWith("zalogowany.")) {
+            changeStatus(Status.HUB);
         }
     }
 
     protected void onJoinGame(JoinGamePacket packet) {
+        playerEid = packet.getPlayerEid();
         changeStatus(Status.LOGIN);
     }
 
@@ -198,7 +202,6 @@ public abstract class Session {
         if (packet.getDimension() != 0) {
            return;
         }
-        
         if (packet.getGamemode() == 0) {
            changeStatus(Status.GAME);
         } else if (packet.getGamemode() == 2) {
@@ -210,7 +213,7 @@ public abstract class Session {
 
     protected void changeStatus(Status newStatus) {
         status = newStatus;
-        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(500));
+        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(1000));
     }
 
     private void join() {

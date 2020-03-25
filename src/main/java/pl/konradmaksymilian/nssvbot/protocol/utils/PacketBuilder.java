@@ -25,14 +25,14 @@ public class PacketBuilder {
     }
     
     public static JoinGamePacket joinGame(DataInputStream in) throws IOException {
-        in.readInt();
+        int playerEid = in.readInt();
         in.readByte();
         in.readInt();
         in.readByte();
         in.readByte();
         StringConverter.readString(in).getValue();
         in.readBoolean();
-        return new JoinGamePacket();
+        return new JoinGamePacket(playerEid);
     }
 
     public static ChatMessageClientboundPacket chatMessageClientbound(DataInputStream in) throws IOException {

@@ -69,6 +69,13 @@ public class PlayerBlockPlacementPacket implements Packet {
 
         Builder() {}
 
+        public Builder position(Position position) {
+            x = position.getX();
+            y = position.getY();
+            z = position.getZ();
+            return this;
+        }
+
         public Builder x(int x) {
             this.x = x;
             return this;

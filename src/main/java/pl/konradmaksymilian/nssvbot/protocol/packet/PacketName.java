@@ -21,12 +21,10 @@ public enum PacketName {
     RESPAWN (0x35),
     PLAYER_POSITION (0x0D),
     PLAYER_LOOK (0x0F),
-    UPDATE_BLOCK_ENTITY (0x09),
-    USE_ENTITY (0x0A),
-    CHUNK_DATA (0x20),
-    ANIMATION (0x1D),
     PLAYER_DIGGING (0x14),
-    PLAYER_BLOCK_PLACEMENT (0x1F);
+    PLAYER_BLOCK_PLACEMENT (0x1F),
+    PLAYER_POSITION_AND_LOOK_SERVERBOUND (0x0E),
+    ENTITY_ACTION (0x15);
 
     private final int id;
     

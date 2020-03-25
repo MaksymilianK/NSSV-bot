@@ -25,6 +25,10 @@ public class Timer {
     public void setTimeFromNow(String name, Duration duration) {
         times.put(name, getNow().plus(duration));
     }
+
+    public void setTimeFromNow(String name, String duration) {
+        times.put(name, getNow().plus(durations.get(duration)));
+    }
     
     public Duration getDuration(String name) {
         return durations.get(name);

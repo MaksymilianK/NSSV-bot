@@ -20,11 +20,30 @@ public final class PositionConverter {
     }
 
     public static void write(Position position, DataOutputStream out) throws IOException {
-        long data = position.getX();
-        data = data << 12;
-        data = data | position.getY();
-        data = data << 26;
-        data = data | position.getZ();
+        long x = position.getX();
+        long y = position.getY();
+        long z = position.getZ();
+
+        if (x < 0) {
+            x |= 0b0000000000000000000000000000000000000010000000000000000000000000;
+            x &= 0b0000000000000000000000000000000000000011111111111111111111111111;
+        }
+
+        if (y < 0) {
+            y |= 0b0000000000000000000000000000000000000000000000000000100000000000;
+            y &= 0b0000000000000000000000000000000000000000000000000000111111111111;
+        }
+
+        if (z < 0) {
+            z |= 0b0000000000000000000000000000000000000010000000000000000000000000;
+            z &= 0b0000000000000000000000000000000000000011111111111111111111111111;
+        }
+
+        long data = x;
+        data <<= 12;
+        data |= y;
+        data <<= 26;
+        data |= z;
         out.writeLong(data);
     }
 }

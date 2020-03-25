@@ -1,8 +1,6 @@
 package pl.konradmaksymilian.nssvbot.protocol.packet;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 
 import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
@@ -74,9 +72,25 @@ public class PacketWriter {
             case PLAYER_BLOCK_PLACEMENT:
                 writePlayerBlockPlacement((PlayerBlockPlacementPacket) packet, buffer);
                 break;
+            case PLAYER_POSITION_AND_LOOK_SERVERBOUND:
+                writePlayerPositionAndLook((PlayerPositionAndLookServerboundPacket) packet, buffer);
+                break;
+            case ENTITY_ACTION:
+                writeEntityAction((EntityActionPacket) packet, buffer);
+                break;
             default:
                 throw new UnrecognizedPacketException("Cannot write the packet '" + packet.getName() + "'");
         }
+    }
+
+    private void writePlayerPositionAndLook(PlayerPositionAndLookServerboundPacket packet,
+                                            DataOutputStream buffer) throws IOException {
+        buffer.writeDouble(packet.getX());
+        buffer.writeDouble(packet.getFeetY());
+        buffer.writeDouble(packet.getZ());
+        buffer.writeFloat(packet.getYaw());
+        buffer.writeFloat(packet.getPitch());
+        buffer.writeBoolean(packet.isOnGround());
     }
 
     private void writeData(ByteArrayOutputStream buffer) throws IOException {
@@ -165,7 +179,6 @@ public class PacketWriter {
         buffer.writeByte(packet.getFace());
     }
 
-
     private void writePlayerBlockPlacement(PlayerBlockPlacementPacket packet, DataOutputStream buffer) throws IOException {
         PositionConverter.write(packet.getLocation(), buffer);
         VarIntLongConverter.writeVarInt(packet.getFace(), buffer);
@@ -173,5 +186,11 @@ public class PacketWriter {
         buffer.writeFloat(packet.getCursorX());
         buffer.writeFloat(packet.getCursorY());
         buffer.writeFloat(packet.getCursorZ());
+    }
+
+    private void writeEntityAction(EntityActionPacket packet, DataOutputStream buffer) throws IOException {
+        VarIntLongConverter.writeVarInt(packet.getEntityId(), buffer);
+        VarIntLongConverter.writeVarInt(packet.getActionId(), buffer);
+        VarIntLongConverter.writeVarInt(0, buffer);
     }
 }
