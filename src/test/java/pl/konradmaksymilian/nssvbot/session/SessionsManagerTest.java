@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
@@ -21,6 +22,7 @@ import pl.konradmaksymilian.nssvbot.config.PlayerConfig;
 import pl.konradmaksymilian.nssvbot.config.PlayerConfigReader;
 import pl.konradmaksymilian.nssvbot.management.Player;
 import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
+import pl.konradmaksymilian.nssvbot.management.command.DealerJoinCommand;
 import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
 import pl.konradmaksymilian.nssvbot.management.command.active.AdCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.active.LeaveCommandActive;
@@ -30,8 +32,6 @@ import pl.konradmaksymilian.nssvbot.management.command.detached.LeaveCommandDeta
 public class SessionsManagerTest {
 
     private SessionsManager sessionsManager;
-    
-    private Properties config;
 
     @Mock
     private SessionFactory sessionFactory;
@@ -43,12 +43,16 @@ public class SessionsManagerTest {
     private Consumer<Object> onMessage;
     
     @Mock
-    private Session session;
+    private BasicAfkSession basicAfkSession;
+
+    @Mock
+    private DealerSession dealerSession;
     
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        when(sessionFactory.create()).thenReturn(session);
+        when(sessionFactory.createBasicAfk()).thenReturn(basicAfkSession);
+        when(sessionFactory.createDealer()).thenReturn(dealerSession);
 
         PlayerConfig config = PlayerConfig.builder()
                 .add(new Player("player1", "pass1", "p1"))
@@ -100,12 +104,12 @@ public class SessionsManagerTest {
     }
     
     @Test
-    public void createNewSessionAfterJoinCommandWithKnownAlias() {
+    public void createNewBasicAfkSessionAfterJoinCommandWithKnownAlias() {
         sessionsManager.join(new JoinCommand("p1"));
        
         assertThat(sessionsManager.waitsForPassword()).isFalse();
         assertThat(sessionsManager.getStatus()).hasSize(1);
-        verify(session).joinServer(argThat(player -> {
+        verify(basicAfkSession).joinServer(argThat(player -> {
             if (player.getAlias().isEmpty()) {
                 return false;
             } else {
@@ -114,13 +118,39 @@ public class SessionsManagerTest {
             }
         }), any());
     }
+
+    @Test
+    public void createNewDealerSessionAfterJoinCommandWithKnownAlias() {
+        sessionsManager.join(new DealerJoinCommand("p1"));
+
+        assertThat(sessionsManager.waitsForPassword()).isFalse();
+        assertThat(sessionsManager.getStatus()).hasSize(1);
+        verify(dealerSession).joinServer(argThat(player -> {
+            if (player.getAlias().isEmpty()) {
+                return false;
+            } else {
+                return player.getNick().equals("player1") && player.getPassword().equals("pass1")
+                        && player.getAlias().get().equals("p1");
+            }
+        }), any());
+    }
     
     @Test
-    public void createNewSessionAfterPasswordWhenWaitsForPassword() {
+    public void createNewBasicAfkSessionAfterPasswordWhenWaitsForPassword() {
         sessionsManager.join(new JoinCommand("player1000"));
         
         sessionsManager.join("password");
         
+        assertThat(sessionsManager.waitsForPassword()).isFalse();
+        assertThat(sessionsManager.getStatus()).hasSize(1);
+    }
+
+    @Test
+    public void createNewDealerSessionAfterPasswordWhenWaitsForPassword() {
+        sessionsManager.join(new DealerJoinCommand("player1000"));
+
+        sessionsManager.join("password");
+
         assertThat(sessionsManager.waitsForPassword()).isFalse();
         assertThat(sessionsManager.getStatus()).hasSize(1);
     }
@@ -133,8 +163,17 @@ public class SessionsManagerTest {
     }
     
     @Test
-    public void throwExceptionOnJoinCommandWhenWaitsForPassword() {
+    public void throwExceptionOnJoinCommandWhenWaitsForPasswordForBasicAfkSession() {
         sessionsManager.join(new JoinCommand("player1000"));
+
+        assertThatExceptionOfType(IllegalMethodInvocationException.class)
+                .isThrownBy(() ->  sessionsManager.join(new JoinCommand("player2000")))
+                .withMessage("Cannot join when waiting for a password");
+    }
+
+    @Test
+    public void throwExceptionOnJoinCommandWhenWaitsForPasswordForDealerSession() {
+        sessionsManager.join(new DealerJoinCommand("player1000"));
 
         assertThatExceptionOfType(IllegalMethodInvocationException.class)
                 .isThrownBy(() ->  sessionsManager.join(new JoinCommand("player2000")))
@@ -143,22 +182,22 @@ public class SessionsManagerTest {
     
     @Test
     public void attachIfSessionsExistsAndExistingNick() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         sessionsManager.attach(new AttachCommand("player1"));
         
         assertThat(sessionsManager.isAnyActive()).isTrue();
-        verify(session).setActive(true);
+        verify(basicAfkSession).setActive(true);
     }
     
     @Test
     public void throwExceptionIfAttachToSessionAlreadyAttachedTo() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
@@ -170,9 +209,9 @@ public class SessionsManagerTest {
     
     @Test
     public void throwExceptionIfAttachToNonExistingSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         
         assertThatExceptionOfType(SessionException.class)
                 .isThrownBy(() -> sessionsManager.attach(new AttachCommand("player1")))
@@ -181,23 +220,23 @@ public class SessionsManagerTest {
     
     @Test
     public void detachIfAttachedToSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
         sessionsManager.detach();
         
         assertThat(sessionsManager.isAnyActive()).isFalse();
-        verify(session).setActive(false);
+        verify(basicAfkSession).setActive(false);
     }
     
     @Test
     public void returnTrueAfterDetached() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
@@ -206,9 +245,9 @@ public class SessionsManagerTest {
     
     @Test
     public void returnFalseAfterDetachFail() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         assertThat(sessionsManager.detach()).isFalse();
@@ -216,72 +255,97 @@ public class SessionsManagerTest {
     
     @Test
     public void setAdActiveIfSessionActive() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
         sessionsManager.setAdActive(new AdCommandActive(65, "ad"));
         
-        verify(session).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
+        verify(basicAfkSession).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
     }
     
     @Test
     public void throwExceptionIfSettingAdActiveIfNoActiveSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         assertThatExceptionOfType(IllegalMethodInvocationException.class)
                 .isThrownBy(() -> sessionsManager.setAdActive(new AdCommandActive(65, "ad")))
                 .withMessage("There is no active session");
     }
+
+    @Test
+    public void throwExceptionOnSetAdAttachedIfSessionNotBasicAfkAndIsActive() {
+        when(dealerSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(dealerSession.getStatus()).thenReturn(Status.GAME);
+        when(dealerSession.isActive()).thenReturn(false);
+        sessionsManager.join(new DealerJoinCommand("player1"));
+        sessionsManager.attach(new AttachCommand("player1"));
+
+        assertThatExceptionOfType(SessionException.class)
+                .isThrownBy(() -> sessionsManager.setAdActive(new AdCommandActive(65, "ad")))
+                .withMessage("The session is not able to advertise");
+    }
     
     @Test
     public void setAdDetachedIfNoActiveSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         sessionsManager.setAdDetached(new AdCommandDetached("player1", 65, "ad"));
         
-        verify(session).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
+        verify(basicAfkSession).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
+    }
+
+    @Test
+    public void throwExceptionOnSetAdDetachedIfNotBasicAfkAndIsNotActive() {
+        when(dealerSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(dealerSession.getStatus()).thenReturn(Status.GAME);
+        when(dealerSession.isActive()).thenReturn(false);
+        sessionsManager.join(new DealerJoinCommand("player1"));
+
+        assertThatExceptionOfType(SessionException.class)
+                .isThrownBy(() -> sessionsManager.setAdDetached(new AdCommandDetached("player1", 65, "ad")))
+                .withMessage("The session is not able to advertise");
     }
     
     @Test
     public void setAdDetachedWithAlias() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
         sessionsManager.setAdDetached(new AdCommandDetached("p1", 65, "ad"));
         
-        verify(session).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
+        verify(basicAfkSession).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
     }
     
     @Test
     public void setAdDetachedIfSessionActive() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
         sessionsManager.setAdDetached(new AdCommandDetached("player1", 65, "ad"));
         
-        verify(session).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
+        verify(basicAfkSession).setAd(argThat(ad -> ad.getDuration() == 65 && ad.getText().equals("ad")));
     }
     
     @Test
     public void throwExceptionIfSettingAdDetachedIfNoSuchSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         
         assertThatExceptionOfType(SessionException.class)
                 .isThrownBy(() -> sessionsManager.setAdDetached(new AdCommandDetached("player1", 65, "ad")))
@@ -290,9 +354,9 @@ public class SessionsManagerTest {
     
     @Test
     public void leaveOnLeaveActiveIfSessionActive() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
@@ -304,9 +368,9 @@ public class SessionsManagerTest {
     
     @Test
     public void throwExceptionOnLeaveActiveIfNoActiveSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         assertThatExceptionOfType(IllegalMethodInvocationException.class)
@@ -316,9 +380,9 @@ public class SessionsManagerTest {
     
     @Test
     public void leaveOnLeaveDetachedIfNoActiveSession() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         sessionsManager.leaveDetached(new LeaveCommandDetached("player1"));
@@ -329,9 +393,9 @@ public class SessionsManagerTest {
     
     @Test
     public void leaveOnLeaveDetachedWithAlias() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         
         sessionsManager.leaveDetached(new LeaveCommandDetached("p1"));
@@ -342,9 +406,9 @@ public class SessionsManagerTest {
     
     @Test
     public void throwExceptionOnLeaveDetachedIfSessionActive() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
@@ -355,15 +419,15 @@ public class SessionsManagerTest {
     
     @Test
     public void sendMessageIfSessionActive() {
-        when(session.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
-        when(session.getStatus()).thenReturn(Status.GAME);
-        when(session.isActive()).thenReturn(false);
+        when(basicAfkSession.getPlayer()).thenReturn(new Player("player1", "pass1", "p1"));
+        when(basicAfkSession.getStatus()).thenReturn(Status.GAME);
+        when(basicAfkSession.isActive()).thenReturn(false);
         sessionsManager.join(new JoinCommand("player1"));
         sessionsManager.attach(new AttachCommand("player1"));
         
         sessionsManager.sendMessage("message");
         
-        verify(session).sendChatMessage("message");
+        verify(basicAfkSession).sendChatMessage("message");
     }
     
     @Test

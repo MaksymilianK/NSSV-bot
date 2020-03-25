@@ -13,13 +13,13 @@ import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketReader;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketWriter;
-import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
 
 public class ConnectionManager {
     
     public static final String HOST = "nssv.pl";
     public static final short PORT = 25565;
 
+    private final int delay;
     private final PacketReader packetReader;
     private final PacketWriter packetWriter;
     private final Queue<Packet> outgoingPackets = new ConcurrentLinkedQueue<>();
@@ -32,7 +32,8 @@ public class ConnectionManager {
     private boolean touched;
     private volatile boolean connected;
 
-    public ConnectionManager(PacketReader packetReader, PacketWriter packetWriter) {
+    public ConnectionManager(int delay, PacketReader packetReader, PacketWriter packetWriter) {
+        this.delay = delay;
         this.packetReader = packetReader;
         this.packetWriter = packetWriter;
         this.touched = false;
@@ -79,8 +80,8 @@ public class ConnectionManager {
         while (true) {
             String disconnectionReason = "";
 
-            try (var socket = new SocketWrapper(HOST, PORT)) {
-                setUp(socket);
+            try (var connection = new Connection(HOST, PORT)) {
+                setUp(connection);
                 onEveryConnection.run();
                 maintainConnection();
             } catch (ConnectionException e) {
@@ -93,11 +94,11 @@ public class ConnectionManager {
         }
     }
     
-    private void setUp(SocketWrapper socket) {
+    private void setUp(Connection connection) {
         connected = true;
         
-        packetReader.setInput(socket.getIn());
-        packetWriter.setOutput(socket.getOut());
+        packetReader.setInput(connection.getIn());
+        packetWriter.setOutput(connection.getOut());
     }
     
     private void maintainConnection() throws InterruptedException {
@@ -108,7 +109,7 @@ public class ConnectionManager {
             
             listenToIncomingPackets();
             passPackets();
-            Thread.sleep(500);
+            Thread.sleep(delay);
             onEveryCheckFinish.run();
         }
     }
@@ -152,7 +153,7 @@ public class ConnectionManager {
             return this;
         }
         
-        public ConnectionBuilder onEveryCheckFinish(Runnable onEveryCheck) {
+        public ConnectionBuilder onEveryCheck(Runnable onEveryCheck) {
             if (touched) {
                 throw new IllegalMethodInvocationException("Cannot change the ConnectionManager since the connection "
                         + "starts");

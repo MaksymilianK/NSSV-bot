@@ -1,4 +1,4 @@
-package pl.konradmaksymilian.nssvbot.session;
+package pl.konradmaksymilian.nssvbot.utils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +20,14 @@ public class Timer {
     
     public void setTimeToNow(String name) {
         times.put(name, getNow());
+    }
+
+    public void setTimeFromNow(String name, Duration duration) {
+        times.put(name, getNow().plus(duration));
+    }
+
+    public void setTimeFromNow(String name, String duration) {
+        times.put(name, getNow().plus(durations.get(duration)));
     }
     
     public Duration getDuration(String name) {

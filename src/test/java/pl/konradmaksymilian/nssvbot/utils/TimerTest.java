@@ -1,4 +1,4 @@
-package pl.konradmaksymilian.nssvbot.session;
+package pl.konradmaksymilian.nssvbot.utils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import pl.konradmaksymilian.nssvbot.utils.Timer;
 
 public class TimerTest {
 
@@ -18,16 +19,30 @@ public class TimerTest {
     }
     
     @Test
-    public void returnTrueIfIsNowAfter() {
+    public void returnTrueOnSetTimeIfIsNowAfter() {
         timer.setTime("before", Instant.now().minus(Duration.ofSeconds(5)));
         
         assertThat(timer.isNowAfter("before")).isTrue();
     }
+
+    @Test
+    public void returnTrueOnSetTimeFromNowIfIsNowAfter() {
+        timer.setTimeFromNow("before", Duration.ofSeconds(-5));
+
+        assertThat(timer.isNowAfter("before")).isTrue();
+    }
     
     @Test
-    public void returnFalseIfIsBefore() {
+    public void returnFalseOnSetTimeIfIsBefore() {
         timer.setTime("after", Instant.MAX);
         
+        assertThat(timer.isNowAfter("after")).isFalse();
+    }
+
+    @Test
+    public void returnFalseOnSetTimeFromIfIsBefore() {
+        timer.setTimeFromNow("after", Duration.ofDays(255));
+
         assertThat(timer.isNowAfter("after")).isFalse();
     }
     

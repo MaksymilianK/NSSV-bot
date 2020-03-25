@@ -4,11 +4,10 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
-import pl.konradmaksymilian.nssvbot.config.ConfigException;
-import pl.konradmaksymilian.nssvbot.config.PlayerConfig;
 import pl.konradmaksymilian.nssvbot.config.PlayerConfigReader;
 import pl.konradmaksymilian.nssvbot.management.Player;
 import pl.konradmaksymilian.nssvbot.management.command.AttachCommand;
+import pl.konradmaksymilian.nssvbot.management.command.CommandName;
 import pl.konradmaksymilian.nssvbot.management.command.JoinCommand;
 import pl.konradmaksymilian.nssvbot.management.command.active.AdCommandActive;
 import pl.konradmaksymilian.nssvbot.management.command.detached.AdCommandDetached;
@@ -67,13 +66,13 @@ public class SessionsManager {
         } else if (waitsForPassword()) {
             throw new IllegalMethodInvocationException("Cannot join when waiting for a password");
         }
-        
+
         var playerData = players.stream()
                 .filter(player -> matchesNickOrAlias(player, command.getNickOrAlias()))
                 .findAny();
-        
+
         if (playerData.isPresent()) {
-            startNewSession(playerData.get());
+            startNewSession(playerData.get(), command.getName());
             return true;
         } else {
             waitingJoinCommand = command;
@@ -85,7 +84,8 @@ public class SessionsManager {
         if (!waitsForPassword()) {
             throw new IllegalMethodInvocationException("Cannot provide password while not waiting for it");
         } else {
-            startNewSession(new Player(waitingJoinCommand.getNickOrAlias(), password, null));
+            startNewSession(new Player(waitingJoinCommand.getNickOrAlias(), password, null),
+                    waitingJoinCommand.getName());
             waitingJoinCommand = null;
         }
     }
@@ -154,13 +154,18 @@ public class SessionsManager {
     }
         
     private boolean setAd(int duration, String text, Session session) {
+        if (!(session instanceof BasicAfkSession)) {
+            throw new SessionException("The session is not able to advertise");
+        }
+        var afk = (BasicAfkSession) session;
+
         if (duration < 0) {
-            session.setAd(new Advert(duration, text));
+            afk.setAd(new Advert(duration, text));
             return false;
         } else if (duration < 60) {
             throw new SessionException("Duration is too short; cannot set the advert");
         } else {
-            session.setAd(new Advert(duration, text));
+            afk.setAd(new Advert(duration, text));
             return true;
         }
     }
@@ -177,12 +182,20 @@ public class SessionsManager {
         players.add(new Player(nick, password, alias));
     }
     
-    private void startNewSession(Player player) {
+    private void startNewSession(Player player, CommandName commandName) {
         if (sessions.stream().anyMatch(session -> session.getPlayer().equals(player))) {
             throw new SessionException("The player is already in the server");
         }
-        
-        var session = sessionFactory.create();
+
+        Session session;
+        if (commandName.equals(CommandName.JOIN)) {
+            session = sessionFactory.createBasicAfk();
+        } else if (commandName.equals(CommandName.DEALER_JOIN)) {
+            session = sessionFactory.createDealer();
+        } else {
+            throw new SessionException("Cannot recognise type of session to create: '" + commandName + "'");
+        }
+
         var thread = new Thread(() -> session.joinServer(player, message -> onMessage.accept(message)));
         thread.start();
         sessions.add(session);

@@ -4,8 +4,16 @@ import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 
 public final class JoinGamePacket implements Packet {
-    
-    public JoinGamePacket() {}
+
+    private final int playerEid;
+
+    public JoinGamePacket(int playerEid) {
+        this.playerEid = playerEid;
+    }
+
+    public int getPlayerEid() {
+        return playerEid;
+    }
 
     @Override
     public PacketName getName() {

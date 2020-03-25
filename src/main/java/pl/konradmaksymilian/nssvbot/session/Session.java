@@ -12,31 +12,24 @@ import pl.konradmaksymilian.nssvbot.protocol.Compression;
 import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.KeepAlivePacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.JoinGamePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAndLookPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.RespawnPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.SetCompressionPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ChatMessageServerboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ClientSettingsPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HandshakePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.KeepAliveServerboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.LoginStartPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.TeleportConfirmPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
+import pl.konradmaksymilian.nssvbot.utils.Timer;
 
-public class Session {
+public abstract class Session {
 
-    private final ConnectionManager connection;
-    private final Random random = new Random();
-   
-    private Consumer<Object> onMessage;
-    private Player player;
-    private Timer timer;
-    private Status status = Status.DISCONNECTED;
-    private Advert advert;
-    private boolean isActive = false;
-    
+    protected final ConnectionManager connection;
+    protected final Random random = new Random();
+
+    protected int playerEid;
+    protected Consumer<Object> onMessage;
+    protected Player player;
+    protected Timer timer;
+    protected Status status = Status.DISCONNECTED;
+    protected boolean isActive = false;
+
+    private String code = null;
+
     public Session(ConnectionManager connection, Timer timer) {
         this.connection = connection;
         this.timer = timer;
@@ -47,13 +40,12 @@ public class Session {
         if (this.player != null || this.onMessage != null) {
             throw new IllegalMethodInvocationException("Cannot join the server once again");
         }
-        
         this.player = player;
         this.onMessage = onMessage;
         
         var connectionBuilder = connection.connectionBuilder()
                 .onEveryConnection(this::onEveryConnection)
-                .onEveryCheckFinish(this::onEveryCheck)
+                .onEveryCheck(this::onEveryCheck)
                 .onEveryDisconnection(this::onEveryDisconnection)
                 .onIncomingPacket(this::onPacket);
         try {
@@ -83,26 +75,18 @@ public class Session {
         this.isActive = isActive;
     }
     
-    public void setAd(Advert advert) {
-        if (advert.getDuration() < 0) {
-            this.advert = null;
-        } else if (advert.getDuration() >= 60) {
-            this.advert = advert;
-            timer.setTimeToNow("lastAdvertising");
-            timer.setDuration("advertising", Duration.ofSeconds(advert.getDuration()));
-            sendChatMessage(advert.getText());
-        } else {
-            throw new IllegalArgumentException("Advert cannot have positive duration that is less than 60s");
-        }
-    }
-    
-    private void setUpTimer() {
+    protected void setUpTimer() {
         timer.setTimeToNow("lastKeepAlive");
+<<<<<<< HEAD
         timer.setDuration("keepAlive", Duration.ofSeconds(20));
         timer.setTimeToNow("nextLoginAttempt");
+=======
+        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(500));
+        timer.setDuration("keepAlive", Duration.ofSeconds(30));
+>>>>>>> dealer
     }
     
-    private void onEveryConnection() {
+    protected void onEveryConnection() {
         timer.setTimeToNow("lastKeepAlive");
         connection.setCompression(new Compression(false, Integer.MAX_VALUE));
         connection.setState(State.HANDSHAKING);
@@ -110,6 +94,7 @@ public class Session {
         this.join();
     }
     
+<<<<<<< HEAD
     private void onEveryCheck() {
         //checkKeepAlive();
         checkAdvert();
@@ -135,25 +120,40 @@ public class Session {
     
     private void checkStatus() {
         if (status.equals(Status.GAME) || !timer.isNowAfter("nextLoginAttempt")) {
+=======
+    protected void onEveryCheck() {
+        checkKeepAlive();
+        checkStatus();
+    }
+
+    protected void checkStatus() {
+        if (status.equals(Status.GAME) || !timer.isNowAfter("nextPossibleAttempt")) {
+>>>>>>> dealer
             return;
         } else if (status.equals(Status.LOGIN)) {
-            delayNextAttempt();
             sendChatMessage("/login " + player.getPassword());
-        } else if (status.equals(Status.HUB)) {
             delayNextAttempt();
+        } else if (status.equals(Status.HUB)) {
             sendChatMessage("/polacz reallife");
+            delayNextAttempt();
+        } else if (status.equals(Status.JOINING)) {
+            if (code != null) {
+                sendChatMessage(code.trim());
+            }
+            status = Status.HUB;
+            delayNextAttempt();
         }
     }
-    
-    private void onEveryDisconnection(AbstractMap.SimpleImmutableEntry<String, Integer> info) {
+
+    protected void onEveryDisconnection(AbstractMap.SimpleImmutableEntry<String, Integer> info) {
         changeStatus(Status.DISCONNECTED);
         if (!info.getKey().isEmpty()) {
             onMessage.accept("Player '" + player.getNick() + "' has lost connection: " + info.getKey());
         }
         onMessage.accept("Player '" + player.getNick() + "' will try to reconnect in " + info.getValue() + " seconds");
     }
-    
-    private void onPacket(Packet packet) {
+
+    protected void onPacket(Packet packet) {
         switch (packet.getName()) {
             case KEEP_ALIVE_CLIENTBOUND:
                 onKeepAlive((KeepAlivePacket) packet);
@@ -170,8 +170,8 @@ public class Session {
             case JOIN_GAME:
                 onJoinGame((JoinGamePacket) packet);
                 break;
-            case PLAYER_POSITION_AND_LOOK:
-                onPlayerPositionAndLook((PlayerPositionAndLookPacket) packet);
+            case PLAYER_POSITION_AND_LOOK_CLIENTBOUND:
+                onPlayerPositionAndLook((PlayerPositionAndLookClientboundPacket) packet);
                 break;
             case RESPAWN:
                 onRespawn((RespawnPacket) packet);
@@ -183,48 +183,38 @@ public class Session {
                //do nothing... just skip the packet
         }
     }
-    
-    private void join() {
-        connection.sendPacket(HandshakePacket.builder()
-                .protocolVersion(340)
-                .serverAddress(ConnectionManager.HOST)
-                .serverPort(ConnectionManager.PORT)
-                .nextState(State.LOGIN.getId())
-                .build());
-        connection.setState(State.LOGIN);
-        connection.sendPacket(new LoginStartPacket(player.getNick()));
-    }
-    
-    private void onKeepAlive(KeepAlivePacket packet) {
+
+    protected void onKeepAlive(KeepAlivePacket packet) {
         timer.setTimeToNow("lastKeepAlive");
         connection.sendPacket(new KeepAliveServerboundPacket(packet.getKeepAliveId()));
     }
-    
-    private void onChatMessage(ChatMessageClientboundPacket packet) {
+
+    protected void onChatMessage(ChatMessageClientboundPacket packet) {
         if (isActive) {
             onMessage.accept(packet.getMessage());
         }
-        
-        if (status.equals(Status.LOGIN)) {
-            var firstPart = packet.getMessage().getComponents().get(0);
-            if (firstPart.getStyle().getColour().isPresent() && firstPart.getText().startsWith("Zalogowano.")) {
-                changeStatus(Status.HUB);
-            }
+
+        if (status.equals(Status.HUB) && packet.toString().endsWith("botem.")) {
+            code = packet.getMessage().getComponents().get(5).getText();
+            changeStatus(Status.JOINING);
+        } else if (status.equals(Status.LOGIN) && packet.toString().endsWith("zalogowany.")) {
+            changeStatus(Status.HUB);
         }
     }
-    
-    private void onJoinGame(JoinGamePacket packet) {
+
+    protected void onJoinGame(JoinGamePacket packet) {
+        playerEid = packet.getPlayerEid();
         changeStatus(Status.LOGIN);
     }
-    
-    private void onDisconnectPacket(DisconnectPacket packet) {
+
+    protected void onDisconnectPacket(DisconnectPacket packet) {
         onMessage.accept("Player '" + player.getNick() + "' has been disconnected by the server - reason: "
                 + packet.getReason());
 
         connection.disconnect();
     }
-    
-    private void onLoginSuccess() {
+
+    protected void onLoginSuccess() {
         connection.setState(State.PLAY);
         connection.sendPacket(ClientSettingsPacket.builder()
                 .chatColours(true)
@@ -235,17 +225,16 @@ public class Session {
                 .viewDistance(4)
                 .build());
     }
-    
-    private void onPlayerPositionAndLook(PlayerPositionAndLookPacket packet) {
+
+    protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
         connection.sendPacket(new TeleportConfirmPacket(packet.getTeleportId()));
     }
-    
-    private void onRespawn(RespawnPacket packet) {
+
+    protected void onRespawn(RespawnPacket packet) {
         timer.setTimeToNow("lastKeepAlive");
         if (packet.getDimension() != 0) {
            return;
         }
-        
         if (packet.getGamemode() == 0) {
            changeStatus(Status.GAME);
         } else if (packet.getGamemode() == 2) {
@@ -254,11 +243,36 @@ public class Session {
             throw new RuntimeException("Unexpected respawn packet - gamemode: " + packet.getGamemode());
         }
     }
-    
+
+    protected void changeStatus(Status newStatus) {
+        status = newStatus;
+        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(1000));
+    }
+
+    private void join() {
+        connection.sendPacket(HandshakePacket.builder()
+                .protocolVersion(340)
+                .serverAddress(ConnectionManager.HOST)
+                .serverPort(ConnectionManager.PORT)
+                .nextState(State.LOGIN.getId())
+                .build());
+        connection.setState(State.LOGIN);
+        connection.sendPacket(new LoginStartPacket(player.getNick()));
+    }
+
+    private void checkKeepAlive() {
+        if (timer.isNowAfterDuration("lastKeepAlive", "keepAlive")) {
+            onMessage.accept("Server has not responded to player '" + player.getNick() + "' for "
+                    + timer.getDuration("keepAlive").toSeconds() + " seconds");
+            connection.disconnect();
+        }
+    }
+
     private void onSetCompression(SetCompressionPacket packet) {
         connection.setCompression(new Compression(true, packet.getThreshold()));
     }
     
+<<<<<<< HEAD
     private void changeStatus(Status newStatus) {
         status = newStatus;
         timer.setTimeToNow("nextLoginAttempt");
@@ -266,5 +280,9 @@ public class Session {
     
     private void delayNextAttempt() {
         timer.setTime("nextLoginAttempt", timer.getNow().plusSeconds(60 + random.nextInt(120)));
+=======
+    private void delayNextAttempt() {
+        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
+>>>>>>> dealer
     }
 }

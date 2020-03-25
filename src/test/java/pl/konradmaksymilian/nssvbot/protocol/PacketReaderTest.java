@@ -1,7 +1,7 @@
 package pl.konradmaksymilian.nssvbot.protocol;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -14,14 +14,7 @@ import org.mockito.MockitoAnnotations;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketReader;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectLoginPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectPlayPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.KeepAliveClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.LoginSuccessPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAndLookPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.RespawnPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.SetCompressionPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
 
 public class PacketReaderTest {
@@ -43,7 +36,7 @@ public class PacketReaderTest {
     public void decompressIfCompressionSetToTrueAndUncompressedLengthNot0() throws DataFormatException {
         packetReader.setCompression(new Compression(true, 1));
         packetReader.setState(State.LOGIN);
-        byte[] compressedData = {0x02, 0x54, 0x53, 0x14}; //these bytes do not make much sense, just for stubbing
+        byte[] compressedData = {0x02, 0x54, 0x53, 0x14}; //these bytes do not make much sense, they're just for stubbing
         byte[] packetBytes = {0x05, 0x0a, 0x02, 0x54, 0x53, 0x14}; //size bytes + compressedData
         byte[] decompressedBytes = {0x02, 0x03, 0x31, 0x32, 0x33, 0x04, 0x31, 0x32, 0x33, 0x34};
         when(zlibCompressor.decompress(compressedData, 10)).thenReturn(decompressedBytes);
@@ -65,11 +58,11 @@ public class PacketReaderTest {
         packetReader.setState(State.LOGIN);
         byte[] data = {0x02, 0x03, 0x31, 0x32, 0x33, 0x01, 0x31}; //these bytes do not make much sense, just for stubbing
         byte[] packetBytes = {0x08, 0x00, 0x02, 0x03, 0x31, 0x32, 0x33, 0x01, 0x31}; //size bytes + data
-        when(zlibCompressor.decompress(data, 10)).thenThrow(new RuntimeException("This method should not be invoked"));
         packetReader.setInput(new DataInputStream(new ByteArrayInputStream(packetBytes)));
         
         var readPacket = packetReader.read();
-        
+
+        verify(zlibCompressor, never()).decompress(data, 10);
         assertThat(readPacket).isPresent();
         var packet = readPacket.get();
         assertThat(packet.getName()).isEqualTo(PacketName.LOGIN_SUCCESS);
@@ -77,7 +70,7 @@ public class PacketReaderTest {
         assertThat(loginSuccess.getUUID()).isEqualTo("123");
         assertThat(loginSuccess.getUsername()).isEqualTo("1");
     }
-    
+
     @Test
     public void readingSetCompressionPacket() {
         packetReader.setState(State.LOGIN);
@@ -95,8 +88,8 @@ public class PacketReaderTest {
     @Test
     public void readingLoginSuccessPacket() {
         packetReader.setState(State.LOGIN);
-        byte[] packetBytes = {0x13, 0x02, 0x03, 0x31, 0x2d, 0x33, 0x0d, 0x47, 0x65, 0x6e, 0x69, 0x75, 0x73, 0x7a, 0x4d, 0x69, 
-                0x73, 0x74, 0x72, 0x7a};
+        byte[] packetBytes = {0x13, 0x02, 0x03, 0x31, 0x2d, 0x33, 0x0d, 0x47, 0x65, 0x6e, 0x69, 0x75, 0x73, 0x7a, 0x4d,
+                0x69, 0x73, 0x74, 0x72, 0x7a};
         packetReader.setInput(new DataInputStream(new ByteArrayInputStream(packetBytes)));
         
         var readPacket = packetReader.read();
@@ -169,17 +162,23 @@ public class PacketReaderTest {
     @Test
     public void readingPlayerPositionAndLookPacket() {
         packetReader.setState(State.PLAY);
-        byte[] packetBytes = {0x23, 0x2f, 0x40, 0x5f, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x5f, 0x60, 0x00, 0x00, 
-                0x00, 0x00, 0x00, 0x40, 0x5f, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x43, 0x55, 0x66, 0x66, 0x43, 0x55, 
-                0x66, 0x66, 0x00, 0x03};
+        byte[] packetBytes = {0x23, 0x2f, 0x40, 0x40, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, -0x05, 0x33, 0x33, 0x33,
+                0x33, 0x33, 0x33, 0x40, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x41, -0x67, -0x66, 0x40, 0x60,
+                0x00, 0x00, 0x00, 0x03};
         packetReader.setInput(new DataInputStream(new ByteArrayInputStream(packetBytes)));
         
         var readPacket = packetReader.read();
         
         assertThat(readPacket).isPresent();
         var packet = readPacket.get();
-        assertThat(packet.getName()).isEqualTo(PacketName.PLAYER_POSITION_AND_LOOK);
-        assertThat(((PlayerPositionAndLookPacket) packet).getTeleportId()).isEqualTo(3);
+        assertThat(packet.getName()).isEqualTo(PacketName.PLAYER_POSITION_AND_LOOK_CLIENTBOUND);
+        var positionAndLookPacket = (PlayerPositionAndLookClientboundPacket) packet;
+        assertThat((positionAndLookPacket.getX())).isEqualTo(32.25d);
+        assertThat((positionAndLookPacket.getFeetY())).isEqualTo(1.7d);
+        assertThat((positionAndLookPacket.getZ())).isEqualTo(5.0d);
+        assertThat((positionAndLookPacket.getYaw())).isEqualTo(12.1f);
+        assertThat((positionAndLookPacket.getPitch())).isEqualTo(3.5f);
+        assertThat((positionAndLookPacket.getTeleportId())).isEqualTo(3);
     }
     
     @Test

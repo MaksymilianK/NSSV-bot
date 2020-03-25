@@ -6,5 +6,6 @@ public enum Status {
     DISCONNECTED,
     LOGIN,
     HUB,
+    JOINING,
     GAME
 }

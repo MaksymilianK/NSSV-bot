@@ -39,10 +39,11 @@ import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.ClientSettingsPa
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HandshakePacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.KeepAliveServerboundPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.LoginStartPacket;
+import pl.konradmaksymilian.nssvbot.utils.Timer;
 
-public class SessionTest {
+public class BasicAfkSessionTest {
 
-    private Session session;
+    private BasicAfkSession session;
     
     @Mock
     private ConnectionManager connection;
@@ -56,7 +57,7 @@ public class SessionTest {
     @Mock
     private Consumer<Object> onMessage;
     
-    private Runnable onEveryCheckFinish;
+    private Runnable onEveryCheck;
     
     private Runnable onEveryConnection;
 
@@ -69,8 +70,8 @@ public class SessionTest {
         MockitoAnnotations.initMocks(this);
         when(connection.connectionBuilder()).thenReturn(connectionBuilder);
         
-        when(connectionBuilder.onEveryCheckFinish(any())).thenAnswer(invocation -> {
-            onEveryCheckFinish = invocation.getArgument(0);
+        when(connectionBuilder.onEveryCheck(any())).thenAnswer(invocation -> {
+            onEveryCheck = invocation.getArgument(0);
             return connectionBuilder;
         });
         
@@ -90,10 +91,9 @@ public class SessionTest {
         });
         
         when(timer.isNowAfter(any())).thenReturn(false);
-        when(timer.isNowAfterDuration(any(), any(String.class))).thenReturn(false);
         when(timer.isNowAfterDuration(any(), any(Duration.class))).thenReturn(false);
         
-        session = new Session(connection, timer);
+        session = new BasicAfkSession(connection, timer);
         session.joinServer(new Player("GeniuszMistrz", "password", "g"), onMessage);
     }
     
@@ -103,7 +103,7 @@ public class SessionTest {
     }
     
     @Test
-    public void setUpOnConnectionStart() throws InterruptedException {        
+    public void setUpOnConnectionStart() {
         onEveryConnection.run();
         
         assertThat(session.getStatus()).isEqualTo(Status.DISCONNECTED);
@@ -113,7 +113,7 @@ public class SessionTest {
     }
     
     @Test
-    public void sendHandshakeOnConnectionStart() throws InterruptedException {        
+    public void sendHandshakeOnConnectionStart() {
         onEveryConnection.run();
         
         verify(connection).sendPacket(HandshakePacket.builder()
@@ -125,28 +125,28 @@ public class SessionTest {
     }
 
     @Test
-    public void sendInternalMessageOnConnectionStart() throws InterruptedException {
+    public void sendInternalMessageOnConnectionStart() {
         onEveryConnection.run();
 
         verify(onMessage).accept("Player 'GeniuszMistrz' has connected to the server");
     }
     
     @Test
-    public void setNewStateAfterHandshake() throws InterruptedException {        
+    public void setNewStateAfterHandshake() {
         onEveryConnection.run();
         
         verify(connection).sendPacket(new LoginStartPacket("GeniuszMistrz"));
     }
     
     @Test
-    public void setLoginStateAfterHandshake() throws InterruptedException {        
+    public void setLoginStateAfterHandshake() {
         onEveryConnection.run();
         
         verify(connection).setState(State.LOGIN);
     }
     
     @Test
-    public void sendLoginStartAfterHandshake() throws InterruptedException {        
+    public void sendLoginStartAfterHandshake() {
         onEveryConnection.run();
         
         verify(connection).sendPacket(new LoginStartPacket("GeniuszMistrz"));
@@ -398,7 +398,7 @@ public class SessionTest {
         when(timer.isNowAfterDuration("lastKeepAlive", "keepAlive")).thenReturn(true);
         when(timer.getDuration("keepAlive")).thenReturn(Duration.ofSeconds(20));
         
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
         
         verify(onMessage).accept("Server has not responded to player 'GeniuszMistrz' for 20 seconds");
     }
@@ -408,7 +408,7 @@ public class SessionTest {
         when(timer.isNowAfterDuration("lastKeepAlive", "keepAlive")).thenReturn(true);
         when(timer.getDuration("keepAlive")).thenReturn(Duration.ofSeconds(20));
         
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
         
         verify(connection).disconnect();
     }*/
@@ -418,9 +418,9 @@ public class SessionTest {
         session.setAd(new Advert(120, "advert"));
         when(timer.isNowAfterDuration("lastAdvertising", "advertising")).thenReturn(true);
         
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
         
         verify(connection, times(4)).sendPacket(new ChatMessageServerboundPacket("advert")); // once on advert set and 3 times on every check
         verify(timer, times(4)).setTimeToNow("lastAdvertising");
@@ -430,7 +430,7 @@ public class SessionTest {
     public void doNothingWithAdvertIfAdvertNotSet() {
         when(timer.isNowAfterDuration("lastAdvertising", "advertising")).thenReturn(true);
         
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
         
         verify(connection, never()).sendPacket(new ChatMessageServerboundPacket("advert"));
         verify(timer, never()).setTimeToNow("lastAdvertising");
@@ -441,7 +441,7 @@ public class SessionTest {
         session.setAd(new Advert(120, "advert"));
         when(timer.isNowAfterDuration("lastAdvertising", "advertising")).thenReturn(false);
         
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
         
         verify(connection, times(1)).sendPacket(new ChatMessageServerboundPacket("advert")); // once on advert set
         verify(timer, times(1)).setTimeToNow("lastAdvertising"); // once on advert set
@@ -449,32 +449,48 @@ public class SessionTest {
     
     @Test
     public void tryToLogInAndDelayNextAttemptIfItIsTimeToAndStatusLogin() {
+<<<<<<< HEAD:src/test/java/pl/konradmaksymilian/nssvbot/session/SessionTest.java
         when(timer.isNowAfter("nextLoginAttempt")).thenReturn(true);
         var time = Instant.MAX.minus(Duration.ofMinutes(10));
         when(timer.getNow()).thenReturn(time);
+=======
+        when(timer.isNowAfter("nextPossibleAttempt")).thenReturn(true);
+>>>>>>> dealer:src/test/java/pl/konradmaksymilian/nssvbot/session/BasicAfkSessionTest.java
         onIncomingPacket.accept(new JoinGamePacket()); //in order to set status to LOGIN
 
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
         
         verify(connection, times(3)).sendPacket(new ChatMessageServerboundPacket("/login password"));
+<<<<<<< HEAD:src/test/java/pl/konradmaksymilian/nssvbot/session/SessionTest.java
         verify(timer, times(3)).setTime(eq("nextLoginAttempt"), argThat((Instant i) -> i.isAfter(time)));
+=======
+        verify(timer, times(5)).setTimeFromNow(eq("nextPossibleAttempt"), argThat((Duration d) -> !d.isNegative()));
+>>>>>>> dealer:src/test/java/pl/konradmaksymilian/nssvbot/session/BasicAfkSessionTest.java
     }
     
     @Test
     public void tryToJoinModeAndDelayNextAttemptIfItIsTimeToAndStatusLogin() {
+<<<<<<< HEAD:src/test/java/pl/konradmaksymilian/nssvbot/session/SessionTest.java
         when(timer.isNowAfter("nextLoginAttempt")).thenReturn(true);
         var time = Instant.MAX.minus(Duration.ofMinutes(10));
         when(timer.getNow()).thenReturn(time);
+=======
+        when(timer.isNowAfter("nextPossibleAttempt")).thenReturn(true);
+>>>>>>> dealer:src/test/java/pl/konradmaksymilian/nssvbot/session/BasicAfkSessionTest.java
         onIncomingPacket.accept(new JoinGamePacket()); //in order to set status to LOGIN
         onIncomingPacket.accept(new RespawnPacket(0, 2)); //in order to set status to HUB
 
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
-        onEveryCheckFinish.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
+        onEveryCheck.run();
         
         verify(connection, times(3)).sendPacket(new ChatMessageServerboundPacket("/polacz reallife"));
+<<<<<<< HEAD:src/test/java/pl/konradmaksymilian/nssvbot/session/SessionTest.java
         verify(timer, times(3)).setTime(eq("nextLoginAttempt"), argThat((Instant i) -> i.isAfter(time)));
+=======
+        verify(timer, times(6)).setTimeFromNow(eq("nextPossibleAttempt"), argThat((Duration d) -> !d.isNegative()));
+>>>>>>> dealer:src/test/java/pl/konradmaksymilian/nssvbot/session/BasicAfkSessionTest.java
     }
 }

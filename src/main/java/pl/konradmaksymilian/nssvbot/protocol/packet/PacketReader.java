@@ -51,6 +51,7 @@ public class PacketReader {
             }
             return readNotCompressedPacket(length.getValue());
         } catch (IOException e) {
+            e.printStackTrace();
             throw new ConnectionException("Error while reading a packet from the input stream", e);
         } catch (DataFormatException e) {
             throw new ConnectionException("Error while decompressing data from the input stream", e);
@@ -123,14 +124,13 @@ public class PacketReader {
             packet = PacketBuilder.keepAliveClientbound(data);
         } else if (id == PacketName.DISCONNECT_PLAY.getId()) {
             packet = PacketBuilder.disconnectPlay(data);
-        } else if (id == PacketName.PLAYER_POSITION_AND_LOOK.getId()) {
+        } else if (id == PacketName.PLAYER_POSITION_AND_LOOK_CLIENTBOUND.getId()) {
             packet = PacketBuilder.playerPositionAndLook(data);
         } else if (id == PacketName.RESPAWN.getId()) { 
             packet = PacketBuilder.respawn(data);
         } else {
             return Optional.empty();
         }
-        
         return Optional.of(packet);
     }
 }

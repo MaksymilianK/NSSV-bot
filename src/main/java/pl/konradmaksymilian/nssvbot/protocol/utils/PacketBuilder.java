@@ -2,23 +2,12 @@ package pl.konradmaksymilian.nssvbot.protocol.utils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChangeGameStatePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectLoginPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.DisconnectPlayPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.JoinGamePacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.KeepAliveClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.LoginSuccessPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAndLookPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PluginMessageClientboundPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.RespawnPacket;
-import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.SetCompressionPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 
 public class PacketBuilder {
-        
+
     public static DisconnectLoginPacket disconnectLogin(DataInputStream in) throws IOException {
         return new DisconnectLoginPacket(ChatConverter.convert(StringConverter.readString(in).getValue()));
     }
@@ -36,14 +25,14 @@ public class PacketBuilder {
     }
     
     public static JoinGamePacket joinGame(DataInputStream in) throws IOException {
-        in.readInt();
+        int playerEid = in.readInt();
         in.readByte();
         in.readInt();
         in.readByte();
         in.readByte();
         StringConverter.readString(in).getValue();
         in.readBoolean();
-        return new JoinGamePacket();
+        return new JoinGamePacket(playerEid);
     }
 
     public static ChatMessageClientboundPacket chatMessageClientbound(DataInputStream in) throws IOException {
@@ -55,13 +44,16 @@ public class PacketBuilder {
     }
 
     public static Packet playerPositionAndLook(DataInputStream in) throws IOException {
-        in.readDouble();
-        in.readDouble();
-        in.readDouble();
-        in.readFloat();
-        in.readFloat();
+        var builder = PlayerPositionAndLookClientboundPacket.builder()
+                .x(in.readDouble())
+                .feetY(in.readDouble())
+                .z(in.readDouble())
+                .yaw(in.readFloat())
+                .pitch(in.readFloat());
         in.readByte();
-        return new PlayerPositionAndLookPacket(VarIntLongConverter.readVarInt(in).getValue());
+        return builder
+                .teleportId(VarIntLongConverter.readVarInt(in).getValue())
+                .build();
     }
 
     public static RespawnPacket respawn(DataInputStream in) throws IOException {

@@ -32,6 +32,5 @@ public final class Compression {
             }
         }
         return false;
-           
     }
 }
