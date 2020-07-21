@@ -77,13 +77,8 @@ public abstract class Session {
     
     protected void setUpTimer() {
         timer.setTimeToNow("lastKeepAlive");
-<<<<<<< HEAD
-        timer.setDuration("keepAlive", Duration.ofSeconds(20));
-        timer.setTimeToNow("nextLoginAttempt");
-=======
         timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(500));
         timer.setDuration("keepAlive", Duration.ofSeconds(30));
->>>>>>> dealer
     }
     
     protected void onEveryConnection() {
@@ -93,34 +88,7 @@ public abstract class Session {
         onMessage.accept("Player '" + player.getNick() + "' has connected to the server");
         this.join();
     }
-    
-<<<<<<< HEAD
-    private void onEveryCheck() {
-        //checkKeepAlive();
-        checkAdvert();
-        checkStatus();
-    }
-    
-    private void checkKeepAlive() {
-        if (timer.isNowAfterDuration("lastKeepAlive", "keepAlive")) {
-            onMessage.accept("Server has not responded to player '" + player.getNick() + "' for "
-                    + timer.getDuration("keepAlive").toSeconds() + " seconds");
-            connection.disconnect();
-        }
-    }
-    
-    private void checkAdvert() {
-        if (advert != null) {
-            if (timer.isNowAfterDuration("lastAdvertising", "advertising")) {
-                timer.setTimeToNow("lastAdvertising");
-                sendChatMessage(advert.getText());
-            }
-        }
-    }
-    
-    private void checkStatus() {
-        if (status.equals(Status.GAME) || !timer.isNowAfter("nextLoginAttempt")) {
-=======
+
     protected void onEveryCheck() {
         checkKeepAlive();
         checkStatus();
@@ -128,9 +96,10 @@ public abstract class Session {
 
     protected void checkStatus() {
         if (status.equals(Status.GAME) || !timer.isNowAfter("nextPossibleAttempt")) {
->>>>>>> dealer
             return;
-        } else if (status.equals(Status.LOGIN)) {
+        }
+
+        if (status.equals(Status.LOGIN)) {
             sendChatMessage("/login " + player.getPassword());
             delayNextAttempt();
         } else if (status.equals(Status.HUB)) {
@@ -271,18 +240,8 @@ public abstract class Session {
     private void onSetCompression(SetCompressionPacket packet) {
         connection.setCompression(new Compression(true, packet.getThreshold()));
     }
-    
-<<<<<<< HEAD
-    private void changeStatus(Status newStatus) {
-        status = newStatus;
-        timer.setTimeToNow("nextLoginAttempt");
-    }
-    
-    private void delayNextAttempt() {
-        timer.setTime("nextLoginAttempt", timer.getNow().plusSeconds(60 + random.nextInt(120)));
-=======
+
     private void delayNextAttempt() {
         timer.setTimeFromNow("nextPossibleAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
->>>>>>> dealer
     }
 }
