@@ -63,4 +63,17 @@ public class PacketBuilder {
         StringConverter.readString(in).getValue();
         return new RespawnPacket(dimension, gamemode);
     }
+
+    public static OpenWindowPacket openWindow(DataInputStream in) throws IOException {
+        return new OpenWindowPacket(in.readUnsignedByte(), StringConverter.readString(in).getValue(),
+                ChatConverter.convert(StringConverter.readString(in).getValue()), in.readUnsignedByte());
+    }
+
+    public static ConfirmTransactionClientboundPacket confirmTransactionClientbound(DataInputStream in) throws IOException {
+        return new ConfirmTransactionClientboundPacket(in.readByte(), in.readShort(), in.readBoolean());
+    }
+
+    public static SetSlotPacket setSlot(DataInputStream in) throws IOException {
+        return new SetSlotPacket(in.readByte(), in.readShort(), in.readAllBytes());
+    }
 }

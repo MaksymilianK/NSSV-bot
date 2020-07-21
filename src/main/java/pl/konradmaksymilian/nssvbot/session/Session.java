@@ -28,12 +28,30 @@ public abstract class Session {
     protected Status status = Status.DISCONNECTED;
     protected boolean isActive = false;
 
-    private String code = null;
+    private Integer windowId = null;
+    private int windowCounter = 1;
+    private byte[] slotData = null;
 
     public Session(ConnectionManager connection, Timer timer) {
         this.connection = connection;
         this.timer = timer;
         setUpTimer();
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
     }
     
     public void joinServer(Player player, Consumer<Object> onMessage) {
@@ -54,39 +72,23 @@ public abstract class Session {
             onMessage.accept("Player '" + player.getNick() + "' has left the server");
         }
     }
-    
-    public void sendChatMessage(String message) {
-        connection.sendPacket(new ChatMessageServerboundPacket(message));
-    }
-    
-    public Player getPlayer() {
-        return player;
-    }
-    
-    public Status getStatus() {
-        return status;
-    }
-    
-    public boolean isActive() {
-        return isActive;
-    }
-    
-    public void setActive(boolean isActive) {
-        this.isActive = isActive;
-    }
-    
+
     protected void setUpTimer() {
-        timer.setTimeToNow("lastKeepAlive");
-        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(500));
         timer.setDuration("keepAlive", Duration.ofSeconds(30));
+        timer.setDuration("loginCooldown", Duration.ofMillis(500));
     }
-    
+
     protected void onEveryConnection() {
         timer.setTimeToNow("lastKeepAlive");
+        timer.setTimeToNow("nextPossibleLoginAttempt");
         connection.setCompression(new Compression(false, Integer.MAX_VALUE));
         connection.setState(State.HANDSHAKING);
         onMessage.accept("Player '" + player.getNick() + "' has connected to the server");
         this.join();
+    }
+    
+    public void sendChatMessage(String message) {
+        connection.sendPacket(new ChatMessageServerboundPacket(message));
     }
 
     protected void onEveryCheck() {
@@ -95,22 +97,17 @@ public abstract class Session {
     }
 
     protected void checkStatus() {
-        if (status.equals(Status.GAME) || !timer.isNowAfter("nextPossibleAttempt")) {
+        if (!timer.isNowAfter("nextPossibleLoginAttempt")) {
             return;
         }
 
         if (status.equals(Status.LOGIN)) {
             sendChatMessage("/login " + player.getPassword());
-            delayNextAttempt();
-        } else if (status.equals(Status.HUB)) {
-            sendChatMessage("/polacz reallife");
-            delayNextAttempt();
-        } else if (status.equals(Status.JOINING)) {
-            if (code != null) {
-                sendChatMessage(code.trim());
-            }
-            status = Status.HUB;
-            delayNextAttempt();
+            delayNextLoginAttempt();
+        } else if (status.equals(Status.HUB) && slotData != null) {
+            connection.sendPacket(new ClickWindowPacket(windowId, 28, 0, windowCounter, 0, slotData));
+            windowCounter++;
+            delayNextLoginAttempt();
         }
     }
 
@@ -145,6 +142,15 @@ public abstract class Session {
             case RESPAWN:
                 onRespawn((RespawnPacket) packet);
                 break;
+            case OPEN_WINDOW:
+                onOpenWindow((OpenWindowPacket) packet);
+                break;
+            case SET_SLOT:
+                onSetSlot((SetSlotPacket) packet);
+                break;
+            case CONFIRM_TRANSACTION_CLIENTBOUND:
+                onConfirmTransaction((ConfirmTransactionClientboundPacket) packet);
+                break;
             case SET_COMPRESSION:
                 onSetCompression((SetCompressionPacket) packet);
                 break;
@@ -161,13 +167,6 @@ public abstract class Session {
     protected void onChatMessage(ChatMessageClientboundPacket packet) {
         if (isActive) {
             onMessage.accept(packet.getMessage());
-        }
-
-        if (status.equals(Status.HUB) && packet.toString().endsWith("botem.")) {
-            code = packet.getMessage().getComponents().get(5).getText();
-            changeStatus(Status.JOINING);
-        } else if (status.equals(Status.LOGIN) && packet.toString().endsWith("zalogowany.")) {
-            changeStatus(Status.HUB);
         }
     }
 
@@ -201,21 +200,36 @@ public abstract class Session {
 
     protected void onRespawn(RespawnPacket packet) {
         timer.setTimeToNow("lastKeepAlive");
-        if (packet.getDimension() != 0) {
-           return;
+
+        if (status.equals(Status.HUB) && packet.getGamemode() == 0) {
+            changeStatus(Status.GAME);
+            windowId = null;
+            slotData = null;
         }
-        if (packet.getGamemode() == 0) {
-           changeStatus(Status.GAME);
-        } else if (packet.getGamemode() == 2) {
-            changeStatus(Status.HUB);
-        } else {
-            throw new RuntimeException("Unexpected respawn packet - gamemode: " + packet.getGamemode());
+    }
+
+    protected void onOpenWindow(OpenWindowPacket packet) {
+        changeStatus(Status.HUB);
+        windowId = packet.getId();
+        slotData = null;
+    }
+
+    protected void onConfirmTransaction(ConfirmTransactionClientboundPacket packet) {
+        if (!packet.isAccepted()) {
+            connection.sendPacket(new ConfirmTransactionServerboundPacket(packet.getWindowId(),
+                    packet.getActionNumber(), false));
+        }
+    }
+
+    protected void onSetSlot(SetSlotPacket packet) {
+        if (packet.getSlot() == 28) {
+            slotData = packet.getSlotData();
         }
     }
 
     protected void changeStatus(Status newStatus) {
         status = newStatus;
-        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofMillis(1000));
+        timer.setTimeFromNow("nextPossibleLoginAttempt", "loginCooldown");
     }
 
     private void join() {
@@ -233,6 +247,7 @@ public abstract class Session {
         if (timer.isNowAfterDuration("lastKeepAlive", "keepAlive")) {
             onMessage.accept("Server has not responded to player '" + player.getNick() + "' for "
                     + timer.getDuration("keepAlive").toSeconds() + " seconds");
+            changeStatus(Status.DISCONNECTED);
             connection.disconnect();
         }
     }
@@ -241,7 +256,7 @@ public abstract class Session {
         connection.setCompression(new Compression(true, packet.getThreshold()));
     }
 
-    private void delayNextAttempt() {
-        timer.setTimeFromNow("nextPossibleAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
+    private void delayNextLoginAttempt() {
+        timer.setTimeFromNow("nextPossibleLoginAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
     }
 }

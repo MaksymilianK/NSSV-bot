@@ -10,6 +10,8 @@ import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
 import pl.konradmaksymilian.nssvbot.protocol.ReadField;
 import pl.konradmaksymilian.nssvbot.protocol.State;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ConfirmTransactionClientboundPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.SetSlotPacket;
 import pl.konradmaksymilian.nssvbot.protocol.utils.PacketBuilder;
 import pl.konradmaksymilian.nssvbot.protocol.utils.VarIntLongConverter;
 import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
@@ -69,8 +71,7 @@ public class PacketReader {
     private Optional<Packet> readCompressedPacket(int length, ReadField<Integer> uncompressedDataLength) 
             throws IOException, DataFormatException {
         int compressedDataLength = length - uncompressedDataLength.getLength();
-        byte[] compressedData = new byte[compressedDataLength];
-        compressedData = in.readNBytes(compressedDataLength);
+        byte[] compressedData = in.readNBytes(compressedDataLength);
         byte[] data = zlib.decompress(compressedData, uncompressedDataLength.getValue());
 
         return buildPacket(data);
@@ -126,8 +127,14 @@ public class PacketReader {
             packet = PacketBuilder.disconnectPlay(data);
         } else if (id == PacketName.PLAYER_POSITION_AND_LOOK_CLIENTBOUND.getId()) {
             packet = PacketBuilder.playerPositionAndLook(data);
-        } else if (id == PacketName.RESPAWN.getId()) { 
+        } else if (id == PacketName.RESPAWN.getId()) {
             packet = PacketBuilder.respawn(data);
+        } else if (id == PacketName.OPEN_WINDOW.getId()) {
+            packet = PacketBuilder.openWindow(data);
+        } else if (id == PacketName.CONFIRM_TRANSACTION_CLIENTBOUND.getId()) {
+            packet = PacketBuilder.confirmTransactionClientbound(data);
+        } else if (id == PacketName.SET_SLOT.getId()) {
+            packet = PacketBuilder.setSlot(data);
         } else {
             return Optional.empty();
         }

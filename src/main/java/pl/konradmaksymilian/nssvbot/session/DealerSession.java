@@ -11,6 +11,7 @@ import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAn
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.EntityActionPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.PlayerBlockPlacementPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.PlayerDiggingPacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.PlayerLookPacket;
 import pl.konradmaksymilian.nssvbot.utils.ChatFormatter;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 
@@ -18,11 +19,11 @@ import java.time.Duration;
 
 public class DealerSession extends MovableSession {
 
-    private static final int[] FIRST_CHEST_X = {8714, 8714, 8715, 8722, 8728, 8728, 8727, 8720};
+    private static final int[] FIRST_CHEST_X = {8727, 8720, 8714, 8714, 8715, 8722, 8728, 8728};
     private static final int FIRST_CHEST_Y = 5;
-    private static final int[] FIRST_CHEST_Z = {8829, 8822, 8816, 8816, 8817, 8824, 8830, 8830};
-    private static final int[] DIRECTION_X = {0, 0, 1, 1, 0, 0, -1, -1};
-    private static final int[] DIRECTION_Z = {-1, -1, 0, 0, 1, 1, 0, 0};
+    private static final int[] FIRST_CHEST_Z = {8830, 8830, 8829, 8822, 8816, 8816, 8817, 8824};
+    private static final int[] DIRECTION_X = {-1, -1, 0, 0, 1, 1, 0, 0};
+    private static final int[] DIRECTION_Z = {0, 0, -1, -1, 0, 0, 1, 1};
 
     private final DealerConfig config;
 
@@ -42,7 +43,7 @@ public class DealerSession extends MovableSession {
     public void setUpTimer() {
         super.setUpTimer();
         timer.setDuration("tpDelay", Duration.ofMillis(1500));
-        timer.setDuration("dealerActionDelay", Duration.ofMillis(1000));
+        timer.setDuration("dealerActionDelay", Duration.ofMillis(100));
     }
 
     @Override
@@ -68,9 +69,7 @@ public class DealerSession extends MovableSession {
 
         if (isNsMessage(packet.getMessage())) {
             if (message.endsWith("obronic!")) {
-                connection.sendPacket(new EntityActionPacket(playerEid, 1));
                 connection.sendPacket(new EntityActionPacket(playerEid, 0));
-            } else if (message.endsWith("okradniecia Cie.")) {
                 connection.sendPacket(new EntityActionPacket(playerEid, 1));
             } else if (dealerStatus.equals(DealerStatus.BUYING)) {
                 if (message.endsWith("wysprzedany.")) {
@@ -81,7 +80,8 @@ public class DealerSession extends MovableSession {
             } else if (dealerStatus.equals(DealerStatus.SELLING) && message.contains(" Sprzedales")) {
                 changeDealerStatus(DealerStatus.TP_TO_PLOT);
                 itemsInEq = 0;
-                connection.sendPacket(new PlayerDiggingPacket(1, new Position(-58, 192, -141), 4));
+            } else if (message.endsWith("w ekwipunku.")) {
+                changeDealerStatus(DealerStatus.TP_TO_SHOP);
             }
         }
 
@@ -124,8 +124,10 @@ public class DealerSession extends MovableSession {
             moveToChest();
         } else if (dealerStatus.equals(DealerStatus.MOVING_ON_PLOT) && !isMoving()) {
             changeDealerStatus(DealerStatus.BUYING);
+            connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
         } else if (dealerStatus.equals(DealerStatus.BUYING)) {
             buy();
+            delayNextDealingAction();
         } else if (dealerStatus.equals(DealerStatus.TP_TO_PLOT) && timer.isNowAfter("nextPossibleTp")) {
             tpToPlot();
         } else if (dealerStatus.equals(DealerStatus.TP_TO_SHOP) && timer.isNowAfter("nextPossibleTp")) {
@@ -145,7 +147,8 @@ public class DealerSession extends MovableSession {
 
     private void sell() {
         connection.sendPacket(new EntityActionPacket(playerEid, 0));
-        connection.sendPacket(new PlayerDiggingPacket(0, new Position(-58, 192, -141), 4));
+        connection.sendPacket(new PlayerDiggingPacket(0, new Position(-50, 192, -150), 4));
+        connection.sendPacket(new PlayerDiggingPacket(1, new Position(-50, 192, -150), 4));
         connection.sendPacket(new EntityActionPacket(playerEid, 1));
     }
 
@@ -188,6 +191,7 @@ public class DealerSession extends MovableSession {
             moveToChest();
         } else {
             changeDealerStatus(DealerStatus.TP_TO_SHOP);
+            removeDestination();
         }
     }
 

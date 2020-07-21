@@ -78,6 +78,11 @@ public class PacketWriter {
             case ENTITY_ACTION:
                 writeEntityAction((EntityActionPacket) packet, buffer);
                 break;
+            case CLICK_WINDOW:
+                writeClickWindowPacket((ClickWindowPacket) packet, buffer);
+                break;
+            case CONFIRM_TRANSACTION_SERVERBOUND:
+                writeConfirmTransaction((ConfirmTransactionServerboundPacket) packet, buffer);
             default:
                 throw new UnrecognizedPacketException("Cannot write the packet '" + packet.getName() + "'");
         }
@@ -192,5 +197,20 @@ public class PacketWriter {
         VarIntLongConverter.writeVarInt(packet.getEntityId(), buffer);
         VarIntLongConverter.writeVarInt(packet.getActionId(), buffer);
         VarIntLongConverter.writeVarInt(0, buffer);
+    }
+
+    private void writeClickWindowPacket(ClickWindowPacket packet, DataOutputStream buffer) throws IOException {
+        buffer.writeByte(packet.getWindowId());
+        buffer.writeShort(packet.getSlot());
+        buffer.writeByte(packet.getButton());
+        buffer.writeShort(packet.getActionNumber());
+        VarIntLongConverter.writeVarInt(packet.getMode(), buffer);
+        buffer.write(packet.getSlotData());
+    }
+
+    private void writeConfirmTransaction(ConfirmTransactionServerboundPacket packet, DataOutputStream buffer) throws IOException {
+        buffer.writeByte(packet.getWindowId());
+        buffer.writeShort(packet.getActionNumber());
+        buffer.writeBoolean(packet.isAccepted());
     }
 }
