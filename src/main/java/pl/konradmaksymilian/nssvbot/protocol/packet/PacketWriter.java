@@ -83,6 +83,19 @@ public class PacketWriter {
                 break;
             case CONFIRM_TRANSACTION_SERVERBOUND:
                 writeConfirmTransaction((ConfirmTransactionServerboundPacket) packet, buffer);
+                break;
+            case ANIMATION:
+                writeAnimation((AnimationPacket) packet, buffer);
+                break;
+            case HELD_ITEM_CHANGE:
+                writeHeldItemChange((HeldItemChangePacket) packet, buffer);
+                break;
+            case USE_ITEM:
+                writeUseItem((UseItemPacket) packet, buffer);
+                break;
+            case CLOSE_WINDOW:
+                writeCloseWindow((CloseWindowPacket) packet, buffer);
+                break;
             default:
                 throw new UnrecognizedPacketException("Cannot write the packet '" + packet.getName() + "'");
         }
@@ -212,5 +225,21 @@ public class PacketWriter {
         buffer.writeByte(packet.getWindowId());
         buffer.writeShort(packet.getActionNumber());
         buffer.writeBoolean(packet.isAccepted());
+    }
+
+    private void writeAnimation(AnimationPacket packet, DataOutputStream buffer) throws IOException {
+        VarIntLongConverter.writeVarInt(packet.getHand(), buffer);
+    }
+
+    private void writeHeldItemChange(HeldItemChangePacket packet, DataOutputStream buffer) throws IOException {
+        buffer.writeShort(packet.getSlot());
+    }
+
+    private void writeUseItem(UseItemPacket packet, DataOutputStream buffer) throws IOException {
+        VarIntLongConverter.writeVarInt(packet.getHand(), buffer);
+    }
+
+    private void writeCloseWindow(CloseWindowPacket packet, DataOutputStream buffer) throws IOException {
+        buffer.writeByte(packet.getWindowId());
     }
 }

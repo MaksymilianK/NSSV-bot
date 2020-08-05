@@ -88,7 +88,7 @@ public class ConnectionManager {
                 disconnectionReason = e.getMessage();
             }
             connected = false;
-            int delayInSeconds = 180 + random.nextInt(120);
+            int delayInSeconds = 30 + random.nextInt(60);
             onEveryDisconnection.accept(new AbstractMap.SimpleImmutableEntry<>(disconnectionReason, delayInSeconds));
             Thread.sleep(delayInSeconds * 1000);
         }

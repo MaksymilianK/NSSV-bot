@@ -3,8 +3,6 @@ package pl.konradmaksymilian.nssvbot.session;
 import pl.konradmaksymilian.nssvbot.config.DealerConfig;
 import pl.konradmaksymilian.nssvbot.connection.ConnectionManager;
 
-import pl.konradmaksymilian.nssvbot.protocol.ChatMessage;
-import pl.konradmaksymilian.nssvbot.protocol.Colour;
 import pl.konradmaksymilian.nssvbot.protocol.Position;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.ChatMessageClientboundPacket;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.PlayerPositionAndLookClientboundPacket;
@@ -27,7 +25,7 @@ public class DealerSession extends MovableSession {
 
     private final DealerConfig config;
 
-    private DealerStatus dealerStatus;
+    private DealerStatus dealerStatus = DealerStatus.DISABLED;
     private int sector;
     private int chest;
     private int itemsLeftInChest;
@@ -36,7 +34,6 @@ public class DealerSession extends MovableSession {
     public DealerSession(ConnectionManager connection, Timer timer, DealerConfig config) {
         super(connection, timer);
         this.config = config;
-        dealerStatus = DealerStatus.DISABLED;
     }
 
     @Override
@@ -49,9 +46,9 @@ public class DealerSession extends MovableSession {
     @Override
     protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
         super.onPlayerPositionAndLook(packet);
-        if (dealerStatus.equals(DealerStatus.TP_TO_PLOT)) {
+        if (dealerStatus.equals(DealerStatus.TP_TO_PLOT) && packet.getX() == 8721.5d) {
             changeDealerStatus(DealerStatus.AFTER_TP_TO_PLOT);
-        } else if (dealerStatus.equals(DealerStatus.TP_TO_SHOP)) {
+        } else if (dealerStatus.equals(DealerStatus.TP_TO_SHOP) && packet.getX() == -49.5d) {
             changeDealerStatus(DealerStatus.AFTER_TP_TO_SHOP);
         }
     }
@@ -76,12 +73,12 @@ public class DealerSession extends MovableSession {
                     onChestEmpty();
                 } else if (message.contains(" Kupiles")) {
                     onBuyingMessage(message);
+                } else if (message.contains("w ekwipunku.")) {
+                    changeDealerStatus(DealerStatus.TP_TO_SHOP);
                 }
             } else if (dealerStatus.equals(DealerStatus.SELLING) && message.contains(" Sprzedales")) {
                 changeDealerStatus(DealerStatus.TP_TO_PLOT);
                 itemsInEq = 0;
-            } else if (message.endsWith("w ekwipunku.")) {
-                changeDealerStatus(DealerStatus.TP_TO_SHOP);
             }
         }
 
@@ -89,19 +86,9 @@ public class DealerSession extends MovableSession {
             startDealing();
         } else if (message.endsWith("--stop--")) {
             stopDealing();
-        } else if (message.endsWith("--tpa--")) {
-            sendChatMessage("/tpa geniusz");
+        } else if (message.endsWith("--status--")) {
+            System.out.println(dealerStatus.toString());
         }
-    }
-
-    private boolean isNsMessage(ChatMessage message) {
-        return message.getComponents().size() > 4
-                && message.getComponents().get(1).getStyle().getColour().isPresent()
-                && message.getComponents().get(1).getStyle().getColour().get().equals(Colour.GOLD.getName())
-                && message.getComponents().get(1).getText().equals("N")
-                && message.getComponents().get(2).getStyle().getColour().isPresent()
-                && message.getComponents().get(2).getStyle().getColour().get().equals(Colour.YELLOW.getName())
-                && message.getComponents().get(2).getText().equals("S");
     }
 
     private void startDealing() {
@@ -150,26 +137,6 @@ public class DealerSession extends MovableSession {
         connection.sendPacket(new PlayerDiggingPacket(0, new Position(-50, 192, -150), 4));
         connection.sendPacket(new PlayerDiggingPacket(1, new Position(-50, 192, -150), 4));
         connection.sendPacket(new EntityActionPacket(playerEid, 1));
-    }
-
-    private float getYaw(double x0, double z0, float x, float z) {
-        double dx = x + 0.5f - x0;
-        double dz = z + 0.5f - z0;
-
-        if (dx < 0) {
-            return (float) ((Math.atan(dz / dx) + Math.PI * 5f / 2f) / Math.PI * 180);
-
-        } else {
-            return (float) ((Math.atan(dz / dx) + Math.PI * 3f / 2f) / Math.PI * 180);
-        }
-    }
-
-    private float getPitch(double x0, double z0, float x, float y, float z) {
-        double dx = x + 0.5f - x0;
-        double dy = (float) (y + 0.5f - feetY - 1.62f);
-        double dz = z + 0.5f - z0;
-        float r = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
-        return (float) (-Math.asin(dy/r) / Math.PI * 180);
     }
 
     private void onBuyingMessage(String message) {

@@ -38,6 +38,9 @@ public final class CommandReader {
             case "dealer":
                 command = buildDealerJoinCommand(payload);
                 break;
+            case "builder":
+                command = buildBuilderJoinCommand(payload);
+                break;
             case "attach":
                 command = buildAttachCommand(payload);
                 break;
@@ -81,6 +84,14 @@ public final class CommandReader {
             return new DealerJoinCommand(parts[0]);
         } else {
             throw new CommandReadingException("Command 'dealer [nickOrAlias]' is too long");
+        }
+    }
+
+    private static BuilderJoinCommand buildBuilderJoinCommand(String[] parts) {
+        if (parts.length == 1) {
+            return new BuilderJoinCommand(parts[0]);
+        } else {
+            throw new CommandReadingException("Command 'builder [nickOrAlias]' is too long");
         }
     }
     

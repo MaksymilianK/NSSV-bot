@@ -27,4 +27,9 @@ public class SessionFactory {
         return new DealerSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer(),
                 config.get());
     }
+
+    public BuilderSession createBuilder() {
+        var zlib = new ZlibCompressor();
+        return new BuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
 }

@@ -22,8 +22,14 @@ public class HorizontalMove {
         double distanceX = destinationX - currentX;
         double distanceZ = destinationZ - currentZ;
         double distance = Math.sqrt((distanceX * distanceX) + (distanceZ * distanceZ));
-        xMove = (distanceX / distance) * MovableSession.MAX_MOVE;
-        zMove = (distanceZ / distance) * MovableSession.MAX_MOVE;
+
+        if (distance == 0) {
+            xMove = 0;
+            zMove = 0;
+        } else {
+            xMove = (distanceX / distance) * MovableSession.MAX_MOVE;
+            zMove = (distanceZ / distance) * MovableSession.MAX_MOVE;
+        }
     }
 
     public double getDestinationX() {

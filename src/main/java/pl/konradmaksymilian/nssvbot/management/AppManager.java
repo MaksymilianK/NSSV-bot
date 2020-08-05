@@ -75,6 +75,9 @@ public class AppManager {
             case DEALER_JOIN:
                 onJoin((DealerJoinCommand) command);
                 break;
+            case BUILDER_JOIN:
+                onJoin((BuilderJoinCommand) command);
+                break;
             case ATTACH:
                 onAttach((AttachCommand) command);
                 break;

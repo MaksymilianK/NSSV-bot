@@ -135,6 +135,14 @@ public class PacketReader {
             packet = PacketBuilder.confirmTransactionClientbound(data);
         } else if (id == PacketName.SET_SLOT.getId()) {
             packet = PacketBuilder.setSlot(data);
+        } else if (id == PacketName.HELD_ITEM_CHANGE.getId()) {
+            packet = PacketBuilder.heldItemChange(data);
+        } else if (id == PacketName.BLOCK_BREAK_ANIMATION.getId()) {
+            packet = PacketBuilder.blockBreakAnimation(data);
+        } else if (id == PacketName.BLOCK_CHANGE.getId()) {
+            packet = PacketBuilder.blockChange(data);
+        } else if (id == PacketName.WINDOW_ITEMS.getId()) {
+            packet = PacketBuilder.windowItems(data);
         } else {
             return Optional.empty();
         }

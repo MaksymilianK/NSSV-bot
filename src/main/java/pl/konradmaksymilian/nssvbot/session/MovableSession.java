@@ -21,7 +21,7 @@ public abstract class MovableSession extends Session {
     protected double z;
     protected float yaw;
     protected float pitch;
-    private HorizontalMove move;
+    protected HorizontalMove move;
 
     public MovableSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
@@ -79,13 +79,29 @@ public abstract class MovableSession extends Session {
         checkMove();
     }
 
+    protected float getYaw(double x0, double z0, float x, float z) {
+        double dx = x + 0.5f - x0;
+        double dz = z + 0.5f - z0;
+
+        if (dx < 0) {
+            return (float) ((Math.atan(dz / dx) + Math.PI * 5f / 2f) / Math.PI * 180);
+
+        } else {
+            return (float) ((Math.atan(dz / dx) + Math.PI * 3f / 2f) / Math.PI * 180);
+        }
+    }
+
+    protected float getPitch(double x0, double z0, float x, float y, float z) {
+        double dx = x + 0.5f - x0;
+        double dy = (float) (y + 0.5f - feetY - 1.62f);
+        double dz = z + 0.5f - z0;
+        float r = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+        return (float) (-Math.asin(dy/r) / Math.PI * 180);
+    }
+
     private void checkMove() {
         boolean reachedDestination = reachedDestination();
         boolean looksWhereShould = looksWhereShould();
-
-        if (!isMoving()) {
-            return;
-        }
 
         if (!reachedDestination) {
             changePosition();
@@ -95,9 +111,7 @@ public abstract class MovableSession extends Session {
             changeLook();
         }
 
-        if (reachedDestination && !looksWhereShould) {
-            connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
-        } else if (!reachedDestination && !looksWhereShould) {
+        if (!reachedDestination || !looksWhereShould) {
             connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
                     .x(x)
                     .feetY(feetY)
@@ -107,9 +121,27 @@ public abstract class MovableSession extends Session {
                     .onGround(true)
                     .build()
             );
-        } else {
-            connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
         }
+
+       /* if (reachedDestination && !looksWhereShould) {
+            changeLook();
+            connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
+        } else if (!reachedDestination && looksWhereShould) {
+            changePosition();
+            connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
+        } else if (!reachedDestination) {
+            changePosition();
+            changeLook();
+            connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
+                    .x(x)
+                    .feetY(feetY)
+                    .z(z)
+                    .yaw(yaw)
+                    .pitch(pitch)
+                    .onGround(true)
+                    .build()
+            );
+        } */
     }
 
     private void changeLook() {

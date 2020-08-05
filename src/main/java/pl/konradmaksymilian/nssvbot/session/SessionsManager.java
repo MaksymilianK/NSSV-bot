@@ -192,6 +192,8 @@ public class SessionsManager {
             session = sessionFactory.createBasicAfk();
         } else if (commandName.equals(CommandName.DEALER_JOIN)) {
             session = sessionFactory.createDealer();
+        } else if (commandName.equals(CommandName.BUILDER_JOIN)) {
+            session = sessionFactory.createBuilder();
         } else {
             throw new SessionException("Cannot recognise type of session to create: '" + commandName + "'");
         }

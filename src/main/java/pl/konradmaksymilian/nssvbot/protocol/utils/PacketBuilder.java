@@ -1,10 +1,14 @@
 package pl.konradmaksymilian.nssvbot.protocol.utils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HeldItemChangePacket;
 
 public class PacketBuilder {
 
@@ -74,6 +78,42 @@ public class PacketBuilder {
     }
 
     public static SetSlotPacket setSlot(DataInputStream in) throws IOException {
-        return new SetSlotPacket(in.readByte(), in.readShort(), in.readAllBytes());
+        int windowId = in.readByte();
+        int slotId = in.readShort();
+        return new SetSlotPacket(windowId, slotId, in.readAllBytes());
+    }
+
+    public static HeldItemChangePacket heldItemChange(DataInputStream in) throws IOException {
+        return new HeldItemChangePacket(in.readShort());
+    }
+
+    public static BlockBreakAnimationPacket blockBreakAnimation(DataInputStream in) throws IOException {
+        VarIntLongConverter.readVarInt(in);
+        return new BlockBreakAnimationPacket(PositionConverter.read(in), in.readByte());
+    }
+
+    public static BlockChangePacket blockChange(DataInputStream in) throws IOException {
+        return new BlockChangePacket(PositionConverter.read(in), VarIntLongConverter.readVarInt(in).getValue());
+    }
+
+    public static WindowItemsPacket windowItems(DataInputStream in) throws IOException {
+        int windowId = in.readUnsignedByte();
+        byte[][] slotData = new byte[in.readShort()][];
+        for (int i = 0; i < slotData.length; i++) {
+            var bytes = new ArrayList<Byte>();
+            bytes.add(in.readByte());
+            bytes.add(in.readByte());
+            if (bytes.get(0) != -1 || bytes.get(1) != -1) {
+                bytes.add(in.readByte());
+                bytes.add(in.readByte());
+            }
+
+            slotData[i] = new byte[bytes.size()];
+            for (int j = 0; j < bytes.size(); j++) {
+                slotData[i][j] = bytes.get(j);
+            }
+        }
+
+        return new WindowItemsPacket(windowId, slotData);
     }
 }

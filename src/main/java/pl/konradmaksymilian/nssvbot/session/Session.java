@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 import pl.konradmaksymilian.nssvbot.IllegalMethodInvocationException;
 import pl.konradmaksymilian.nssvbot.connection.ConnectionManager;
 import pl.konradmaksymilian.nssvbot.management.Player;
+import pl.konradmaksymilian.nssvbot.protocol.ChatMessage;
+import pl.konradmaksymilian.nssvbot.protocol.Colour;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
 import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.KeepAlivePacket;
@@ -27,8 +29,8 @@ public abstract class Session {
     protected Timer timer;
     protected Status status = Status.DISCONNECTED;
     protected boolean isActive = false;
+    protected Integer windowId = null;
 
-    private Integer windowId = null;
     private int windowCounter = 1;
     private byte[] slotData = null;
 
@@ -74,8 +76,9 @@ public abstract class Session {
     }
 
     protected void setUpTimer() {
-        timer.setDuration("keepAlive", Duration.ofSeconds(30));
+        timer.setDuration("keepAlive", Duration.ofSeconds(60));
         timer.setDuration("loginCooldown", Duration.ofMillis(500));
+        timer.setDuration("antiAntiAfkDelay", Duration.ofMinutes(1));
     }
 
     protected void onEveryConnection() {
@@ -94,6 +97,24 @@ public abstract class Session {
     protected void onEveryCheck() {
         checkKeepAlive();
         checkStatus();
+        checkAntiAntiAfk();
+
+    }
+
+    protected void checkAntiAntiAfk() {
+        if (status.equals(Status.GAME) && timer.isNowAfter("nextAntiAntiAfk")) {
+            delayNextAntiAntiAfk();
+            connection.sendPacket(PlayerBlockPlacementPacket.builder()
+                    .x(0)
+                    .y(0)
+                    .z(0)
+                    .face(1)
+                    .hand(0)
+                    .cursorX(0.5f)
+                    .cursorY(0.5f)
+                    .cursorZ(0.5f)
+                    .build());
+        }
     }
 
     protected void checkStatus() {
@@ -203,15 +224,18 @@ public abstract class Session {
 
         if (status.equals(Status.HUB) && packet.getGamemode() == 0) {
             changeStatus(Status.GAME);
+            delayNextAntiAntiAfk();
             windowId = null;
             slotData = null;
         }
     }
 
     protected void onOpenWindow(OpenWindowPacket packet) {
-        changeStatus(Status.HUB);
-        windowId = packet.getId();
-        slotData = null;
+        if (status.equals(Status.LOGIN)) {
+            changeStatus(Status.HUB);
+            windowId = packet.getId();
+            slotData = null;
+        }
     }
 
     protected void onConfirmTransaction(ConfirmTransactionClientboundPacket packet) {
@@ -222,7 +246,7 @@ public abstract class Session {
     }
 
     protected void onSetSlot(SetSlotPacket packet) {
-        if (packet.getSlot() == 28) {
+        if (status.equals(Status.HUB) && packet.getSlot() == 28) {
             slotData = packet.getSlotData();
         }
     }
@@ -230,6 +254,16 @@ public abstract class Session {
     protected void changeStatus(Status newStatus) {
         status = newStatus;
         timer.setTimeFromNow("nextPossibleLoginAttempt", "loginCooldown");
+    }
+
+    protected boolean isNsMessage(ChatMessage message) {
+        return message.getComponents().size() > 4
+                && message.getComponents().get(1).getStyle().getColour().isPresent()
+                && message.getComponents().get(1).getStyle().getColour().get().equals(Colour.GOLD.getName())
+                && message.getComponents().get(1).getText().equals("N")
+                && message.getComponents().get(2).getStyle().getColour().isPresent()
+                && message.getComponents().get(2).getStyle().getColour().get().equals(Colour.YELLOW.getName())
+                && message.getComponents().get(2).getText().equals("S");
     }
 
     private void join() {
@@ -258,5 +292,9 @@ public abstract class Session {
 
     private void delayNextLoginAttempt() {
         timer.setTimeFromNow("nextPossibleLoginAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
+    }
+
+    private void delayNextAntiAntiAfk() {
+        timer.setTimeFromNow("nextAntiAntiAfk", "antiAntiAfkDelay");
     }
 }
