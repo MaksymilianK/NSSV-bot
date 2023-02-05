@@ -98,16 +98,15 @@ public abstract class Session {
         checkKeepAlive();
         checkStatus();
         checkAntiAntiAfk();
-
     }
 
     protected void checkAntiAntiAfk() {
         if (status.equals(Status.GAME) && timer.isNowAfter("nextAntiAntiAfk")) {
             delayNextAntiAntiAfk();
             connection.sendPacket(PlayerBlockPlacementPacket.builder()
-                    .x(0)
-                    .y(0)
-                    .z(0)
+                    .x(28438)
+                    .y(66)
+                    .z(-5448)
                     .face(1)
                     .hand(0)
                     .cursorX(0.5f)
@@ -126,7 +125,7 @@ public abstract class Session {
             sendChatMessage("/login " + player.getPassword());
             delayNextLoginAttempt();
         } else if (status.equals(Status.HUB) && slotData != null) {
-            connection.sendPacket(new ClickWindowPacket(windowId, 28, 0, windowCounter, 0, slotData));
+            connection.sendPacket(new ClickWindowPacket(windowId, 37, 0, windowCounter, 0, slotData));
             windowCounter++;
             delayNextLoginAttempt();
         }
@@ -161,7 +160,7 @@ public abstract class Session {
                 onPlayerPositionAndLook((PlayerPositionAndLookClientboundPacket) packet);
                 break;
             case RESPAWN:
-                onRespawn((RespawnPacket) packet);
+                //onRespawn((RespawnPacket) packet);
                 break;
             case OPEN_WINDOW:
                 onOpenWindow((OpenWindowPacket) packet);
@@ -193,7 +192,14 @@ public abstract class Session {
 
     protected void onJoinGame(JoinGamePacket packet) {
         playerEid = packet.getPlayerEid();
-        changeStatus(Status.LOGIN);
+        if (status.equals(Status.DISCONNECTED)) {
+            changeStatus(Status.LOGIN);
+        } else if (status.equals(Status.HUB)) {
+            changeStatus(Status.GAME);
+            delayNextAntiAntiAfk();
+        } else if (status.equals(Status.GAME)) {
+            changeStatus(Status.HUB);
+        }
     }
 
     protected void onDisconnectPacket(DisconnectPacket packet) {
@@ -219,16 +225,16 @@ public abstract class Session {
         connection.sendPacket(new TeleportConfirmPacket(packet.getTeleportId()));
     }
 
-    protected void onRespawn(RespawnPacket packet) {
-        timer.setTimeToNow("lastKeepAlive");
-
-        if (status.equals(Status.HUB) && packet.getGamemode() == 0) {
-            changeStatus(Status.GAME);
-            delayNextAntiAntiAfk();
-            windowId = null;
-            slotData = null;
-        }
-    }
+//    protected void onRespawn(RespawnPacket packet) {
+//        timer.setTimeToNow("lastKeepAlive");
+//        System.out.println(packet.getDimension() + " " + packet.getGamemode());
+//        if (status.equals(Status.HUB) && packet.getGamemode() == 0) {
+//            changeStatus(Status.GAME);
+//            delayNextAntiAntiAfk();
+//            windowId = null;
+//            slotData = null;
+//        }
+//    }
 
     protected void onOpenWindow(OpenWindowPacket packet) {
         if (status.equals(Status.LOGIN)) {
@@ -241,7 +247,7 @@ public abstract class Session {
     protected void onConfirmTransaction(ConfirmTransactionClientboundPacket packet) {
         if (!packet.isAccepted()) {
             connection.sendPacket(new ConfirmTransactionServerboundPacket(packet.getWindowId(),
-                    packet.getActionNumber(), false));
+                    packet.getActionNumber(), true));
         }
     }
 
