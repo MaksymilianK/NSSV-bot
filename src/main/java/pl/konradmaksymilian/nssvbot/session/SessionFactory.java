@@ -28,6 +28,12 @@ public class SessionFactory {
                 config.get());
     }
 
+    public TestMovableSession createTest() {
+        var zlib = new ZlibCompressor();
+
+        return new TestMovableSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
     public BuilderSession createBuilder() {
         var zlib = new ZlibCompressor();
         return new BuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());

@@ -5,6 +5,7 @@ public enum CommandName {
     JOIN ("join"),
     DEALER_JOIN ("dealer"),
     BUILDER_JOIN ("builder"),
+    TEST_JOIN ("test"),
     ATTACH ("attach"),
     DETACH ("detach"),
     AD_ACTIVE ("ad"),

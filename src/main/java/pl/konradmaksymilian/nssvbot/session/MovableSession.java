@@ -14,17 +14,15 @@ import java.util.Random;
 
 public abstract class MovableSession extends Session {
 
-    public static final double MAX_MOVE = 0.25d;
+    public static final double MAX_MOVE = 0.2d;
+    public static final double MAX_LOOK = 25.0d;
 
-    protected double x;
-    protected double feetY;
-    protected double z;
-    protected float yaw;
-    protected float pitch;
     protected HorizontalMove move;
 
     public MovableSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
+        timer.setTimeToNow("nextMove");
+        timer.setTimeToNow("nextUpdate");
     }
 
     public void setNewDestination(double newX, double newZ) {
@@ -55,28 +53,51 @@ public abstract class MovableSession extends Session {
         return !reachedDestination() || !looksWhereShould();
     }
 
-    @Override
-    protected void onPacket(Packet packet) {
-        super.onPacket(packet);
-        if (packet.getName().equals(PacketName.PLAYER_POSITION_AND_LOOK_CLIENTBOUND)) {
-            onPlayerPositionAndLook((PlayerPositionAndLookClientboundPacket) packet);
+    protected void checkSendPlayerPosition() {
+        if (!isMoving() && timer.isNowAfter("nextMove")) {
+            delayNextUpdate();
+            connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
+
+            System.out.println("check " + x + " " + feetY + " " + z);
         }
     }
 
-    @Override
-    protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
-        super.onPlayerPositionAndLook(packet);
-        x = packet.getX();
-        feetY = packet.getFeetY();
-        z = packet.getZ();
-        yaw = packet.getYaw();
-        pitch = packet.getPitch();
+    protected void delayNextUpdate() {
+        timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(1));
     }
 
     @Override
     protected void onEveryCheck() {
         super.onEveryCheck();
+        if (!status.equals(Status.GAME)) {
+            return;
+        }
+
         checkMove();
+        checkSendPlayerPosition();
+    }
+
+    @Override
+    protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
+        super.onPlayerPositionAndLook(packet);
+        if (!status.equals(Status.GAME)) {
+            return;
+        }
+
+        connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
+                .x(x)
+                .feetY(packet.getFeetY())
+                .z(z)
+                .yaw(packet.getFlags() == (byte) 0 ? packet.getYaw() : yaw)
+                .pitch(packet.getFlags() == (byte) 0 ? packet.getPitch() : pitch)
+                .onGround(false)
+                .build()
+        );
+        connection.sendPacket(new PlayerPacket(true));
+        timer.setTimeFromNow("nextMove", Duration.ofSeconds(2));
+
+        System.out.println("received " + packet.getX() + " " + packet.getFeetY() + " " + packet.getZ() + " " + packet.getYaw() + " " + packet.getPitch());
+        System.out.println("sent cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
     }
 
     protected float getYaw(double x0, double z0, float x, float z) {
@@ -100,37 +121,26 @@ public abstract class MovableSession extends Session {
     }
 
     private void checkMove() {
+        if (!timer.isNowAfter("nextMove")) {
+            return;
+        }
+
         boolean reachedDestination = reachedDestination();
         boolean looksWhereShould = looksWhereShould();
 
-        if (!reachedDestination) {
-            changePosition();
-        }
-
-        if (!looksWhereShould) {
-            changeLook();
-        }
-
-        if (!reachedDestination || !looksWhereShould) {
-            connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
-                    .x(x)
-                    .feetY(feetY)
-                    .z(z)
-                    .yaw(yaw)
-                    .pitch(pitch)
-                    .onGround(true)
-                    .build()
-            );
-        }
-
-       /* if (reachedDestination && !looksWhereShould) {
+        if (reachedDestination && !looksWhereShould) {
             changeLook();
             connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
+            System.out.println("cl " + yaw + " " + pitch);
+            delayNextSendPosition();
         } else if (!reachedDestination && looksWhereShould) {
             changePosition();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
+            System.out.println("cp " + x + " " + feetY + " " + z);
+            delayNextSendPosition();
         } else if (!reachedDestination) {
             changePosition();
+            //connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
             changeLook();
             connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
                     .x(x)
@@ -141,26 +151,45 @@ public abstract class MovableSession extends Session {
                     .onGround(true)
                     .build()
             );
-        } */
+            delayNextSendPosition();
+            System.out.println("cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
+        }
     }
 
     private void changeLook() {
-        yaw = move.getYaw().get();
-        pitch = move.getPitch().get();
+        if (move.getYaw().get() - yaw > MAX_LOOK) {
+            yaw += (MAX_LOOK + randomMoveNumber());
+        } else if (move.getYaw().get() - yaw < -MAX_LOOK) {
+            yaw -= MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+        } else {
+            yaw = move.getYaw().get();
+        }
+
+        if (move.getPitch().get() - pitch > MAX_LOOK) {
+            pitch += MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+        } else if (move.getPitch().get() - pitch < -MAX_LOOK) {
+            pitch -= MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+        } else {
+            pitch = move.getPitch().get();
+        }
     }
 
     private void changePosition() {
         if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove())) {
-            x += move.getXMove();
+            x += (move.getXMove() + randomMoveNumber());
         } else {
             x = move.getDestinationX();
         }
 
         if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove())) {
-            z += move.getZMove();
+            z += (move.getZMove() + randomMoveNumber());
         } else {
             z = move.getDestinationZ();
         }
+    }
+
+    private double randomMoveNumber() {
+        return (random.nextDouble() * 0.04) - 0.02;
     }
 
     private boolean looksWhereShould() {

@@ -24,6 +24,13 @@ public abstract class Session {
     protected final Random random = new Random();
 
     protected int playerEid;
+
+    protected double x;
+    protected double feetY;
+    protected double z;
+    protected float yaw;
+    protected float pitch;
+
     protected Consumer<Object> onMessage;
     protected Player player;
     protected Timer timer;
@@ -55,14 +62,14 @@ public abstract class Session {
     public void setActive(boolean isActive) {
         this.isActive = isActive;
     }
-    
+
     public void joinServer(Player player, Consumer<Object> onMessage) {
         if (this.player != null || this.onMessage != null) {
             throw new IllegalMethodInvocationException("Cannot join the server once again");
         }
         this.player = player;
         this.onMessage = onMessage;
-        
+
         var connectionBuilder = connection.connectionBuilder()
                 .onEveryConnection(this::onEveryConnection)
                 .onEveryCheck(this::onEveryCheck)
@@ -89,7 +96,7 @@ public abstract class Session {
         onMessage.accept("Player '" + player.getNick() + "' has connected to the server");
         this.join();
     }
-    
+
     public void sendChatMessage(String message) {
         connection.sendPacket(new ChatMessageServerboundPacket(message));
     }
@@ -101,12 +108,17 @@ public abstract class Session {
     }
 
     protected void checkAntiAntiAfk() {
+       // System.out.println(status);
         if (status.equals(Status.GAME) && timer.isNowAfter("nextAntiAntiAfk")) {
             delayNextAntiAntiAfk();
+            //System.out.println((int) Math.floor(x) + " " + (int) Math.floor(feetY) + " " + (int) Math.floor(z));
             connection.sendPacket(PlayerBlockPlacementPacket.builder()
-                    .x(28438)
-                    .y(66)
-                    .z(-5448)
+//                    .x(28438)
+//                    .y(66)
+//                    .z(-5448)
+                    .x((int) Math.floor(x))
+                    .y((int) Math.floor(feetY))
+                    .z((int) Math.floor(z))
                     .face(1)
                     .hand(0)
                     .cursorX(0.5f)
@@ -123,6 +135,7 @@ public abstract class Session {
 
         if (status.equals(Status.LOGIN)) {
             sendChatMessage("/login " + player.getPassword());
+            System.out.println("login");
             delayNextLoginAttempt();
         } else if (status.equals(Status.HUB) && slotData != null) {
             connection.sendPacket(new ClickWindowPacket(windowId, 37, 0, windowCounter, 0, slotData));
@@ -194,6 +207,7 @@ public abstract class Session {
         playerEid = packet.getPlayerEid();
         if (status.equals(Status.DISCONNECTED)) {
             changeStatus(Status.LOGIN);
+            timer.setTimeFromNow("nextPossibleLoginAttempt", Duration.ofSeconds(1));
         } else if (status.equals(Status.HUB)) {
             changeStatus(Status.GAME);
             delayNextAntiAntiAfk();
@@ -223,6 +237,14 @@ public abstract class Session {
 
     protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
         connection.sendPacket(new TeleportConfirmPacket(packet.getTeleportId()));
+        x = packet.getX();
+        feetY = (int) packet.getFeetY();
+        z = packet.getZ();
+
+        if (packet.getFlags() == (byte) 0) {
+            yaw = packet.getYaw();
+            pitch = packet.getPitch();
+        }
     }
 
 //    protected void onRespawn(RespawnPacket packet) {
@@ -297,7 +319,7 @@ public abstract class Session {
     }
 
     private void delayNextLoginAttempt() {
-        timer.setTimeFromNow("nextPossibleLoginAttempt", Duration.ofSeconds(60 + random.nextInt(120)));
+        timer.setTimeFromNow("nextPossibleLoginAttempt", Duration.ofSeconds(10 + random.nextInt(10)));
     }
 
     private void delayNextAntiAntiAfk() {

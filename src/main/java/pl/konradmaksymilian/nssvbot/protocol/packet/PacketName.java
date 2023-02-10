@@ -36,7 +36,8 @@ public enum PacketName {
     BLOCK_CHANGE(0x0B),
     USE_ITEM(0x20),
     CLOSE_WINDOW(0x08),
-    WINDOW_ITEMS(0x14);
+    WINDOW_ITEMS(0x14),
+    PLAYER(0x0C);
 
     private final int id;
     

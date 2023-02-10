@@ -78,6 +78,9 @@ public class AppManager {
             case BUILDER_JOIN:
                 onJoin((BuilderJoinCommand) command);
                 break;
+            case TEST_JOIN:
+                onJoin((TestJoinCommand) command);
+                break;
             case ATTACH:
                 onAttach((AttachCommand) command);
                 break;

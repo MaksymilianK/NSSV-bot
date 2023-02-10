@@ -96,6 +96,9 @@ public class PacketWriter {
             case CLOSE_WINDOW:
                 writeCloseWindow((CloseWindowPacket) packet, buffer);
                 break;
+            case PLAYER:
+                writePlayer((PlayerPacket) packet, buffer);
+                break;
             default:
                 throw new UnrecognizedPacketException("Cannot write the packet '" + packet.getName() + "'");
         }
@@ -241,5 +244,9 @@ public class PacketWriter {
 
     private void writeCloseWindow(CloseWindowPacket packet, DataOutputStream buffer) throws IOException {
         buffer.writeByte(packet.getWindowId());
+    }
+
+    private void writePlayer(PlayerPacket packet, DataOutputStream buffer) throws IOException {
+        buffer.writeBoolean(packet.isOnGround());
     }
 }

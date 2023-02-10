@@ -1,23 +1,23 @@
 package pl.konradmaksymilian.nssvbot.protocol.packet.clientbound;
 
 import pl.konradmaksymilian.nssvbot.ObjectConstructionException;
-import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PlayerPositionAndLook;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 public final class PlayerPositionAndLookClientboundPacket extends PlayerPositionAndLook {
 
     private final int teleportId;
+    private final byte flags;
 
     private PlayerPositionAndLookClientboundPacket(double x, double feetY, double z, float yaw, float pitch,
-                                                   int teleportId) {
+                                                   byte flags, int teleportId) {
         super(x, feetY, z, yaw, pitch);
+        this.flags = flags;
         this.teleportId = teleportId;
+    }
+
+    public byte getFlags() {
+        return flags;
     }
 
     public int getTeleportId() {
@@ -36,6 +36,7 @@ public final class PlayerPositionAndLookClientboundPacket extends PlayerPosition
     public static final class Builder extends PlayerPositionAndLook.Builder {
 
         private Integer teleportId;
+        private Byte flags;
 
         private Builder() {}
 
@@ -64,6 +65,11 @@ public final class PlayerPositionAndLookClientboundPacket extends PlayerPosition
             return this;
         }
 
+        public Builder flags(byte flags) {
+            this.flags = flags;
+            return this;
+        }
+
         public Builder teleportId(int teleportId) {
             this.teleportId = teleportId;
             return this;
@@ -71,11 +77,11 @@ public final class PlayerPositionAndLookClientboundPacket extends PlayerPosition
 
         public PlayerPositionAndLookClientboundPacket build() {
             validate();
-            if (teleportId == null) {
+            if (teleportId == null || flags == null) {
                 throw new ObjectConstructionException("Cannot build the object - a field is null");
             }
 
-            return new PlayerPositionAndLookClientboundPacket(x, feetY, z, yaw, pitch, teleportId);
+            return new PlayerPositionAndLookClientboundPacket(x, feetY, z, yaw, pitch, flags, teleportId);
         }
     }
 }

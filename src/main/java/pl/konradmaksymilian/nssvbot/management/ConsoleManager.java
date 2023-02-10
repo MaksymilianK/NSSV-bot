@@ -67,10 +67,12 @@ public class ConsoleManager {
     public void writeChatMessage(ChatMessage message) {
         message.getComponents().forEach(component -> {
             setStyle(component.getStyle());
-            printer.print(component.getText());
+            //printer.print(component.getText());
+            System.out.println(component.getText());
             printer.clear();
         });
-        printer.print("\n");
+        //printer.print("\n");
+        System.out.println();
     }
     
     private void setStyle(ChatComponentStyle style) {

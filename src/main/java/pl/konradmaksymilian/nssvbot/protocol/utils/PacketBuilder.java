@@ -48,14 +48,13 @@ public class PacketBuilder {
     }
 
     public static Packet playerPositionAndLook(DataInputStream in) throws IOException {
-        var builder = PlayerPositionAndLookClientboundPacket.builder()
+        return PlayerPositionAndLookClientboundPacket.builder()
                 .x(in.readDouble())
                 .feetY(in.readDouble())
                 .z(in.readDouble())
                 .yaw(in.readFloat())
-                .pitch(in.readFloat());
-        in.readByte();
-        return builder
+                .pitch(in.readFloat())
+                .flags(in.readByte())
                 .teleportId(VarIntLongConverter.readVarInt(in).getValue())
                 .build();
     }
