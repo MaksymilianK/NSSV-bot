@@ -144,6 +144,8 @@ public abstract class Session {
         }
     }
 
+    protected void onStatusChange() {}
+
     protected void onEveryDisconnection(AbstractMap.SimpleImmutableEntry<String, Integer> info) {
         changeStatus(Status.DISCONNECTED);
         if (!info.getKey().isEmpty()) {
@@ -282,6 +284,7 @@ public abstract class Session {
     protected void changeStatus(Status newStatus) {
         status = newStatus;
         timer.setTimeFromNow("nextPossibleLoginAttempt", "loginCooldown");
+        onStatusChange();
     }
 
     protected boolean isNsMessage(ChatMessage message) {

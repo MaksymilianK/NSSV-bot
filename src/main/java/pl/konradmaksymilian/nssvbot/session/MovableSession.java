@@ -53,8 +53,8 @@ public abstract class MovableSession extends Session {
         return !reachedDestination() || !looksWhereShould();
     }
 
-    protected void checkSendPlayerPosition() {
-        if (!isMoving() && timer.isNowAfter("nextMove")) {
+    protected void checkUpdate() {
+        if (timer.isNowAfter("nextMove")) {
             delayNextUpdate();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
 
@@ -74,7 +74,7 @@ public abstract class MovableSession extends Session {
         }
 
         checkMove();
-        checkSendPlayerPosition();
+        checkUpdate();
     }
 
     @Override
@@ -132,12 +132,10 @@ public abstract class MovableSession extends Session {
             changeLook();
             connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
             System.out.println("cl " + yaw + " " + pitch);
-            delayNextSendPosition();
         } else if (!reachedDestination && looksWhereShould) {
             changePosition();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
             System.out.println("cp " + x + " " + feetY + " " + z);
-            delayNextSendPosition();
         } else if (!reachedDestination) {
             changePosition();
             //connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
@@ -151,7 +149,6 @@ public abstract class MovableSession extends Session {
                     .onGround(true)
                     .build()
             );
-            delayNextSendPosition();
             System.out.println("cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
         }
     }

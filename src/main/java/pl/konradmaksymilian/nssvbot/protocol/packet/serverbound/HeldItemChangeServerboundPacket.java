@@ -3,11 +3,11 @@ package pl.konradmaksymilian.nssvbot.protocol.packet.serverbound;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 
-public final class HeldItemChangePacket implements Packet {
+public final class HeldItemChangeServerboundPacket implements Packet {
 
     private final short slot;
 
-    public HeldItemChangePacket(short slot) {
+    public HeldItemChangeServerboundPacket(short slot) {
         this.slot = slot;
     }
 
@@ -17,6 +17,6 @@ public final class HeldItemChangePacket implements Packet {
 
     @Override
     public PacketName getName() {
-        return PacketName.HELD_ITEM_CHANGE;
+        return PacketName.HELD_ITEM_CHANGE_SERVERBOUND;
     }
 }

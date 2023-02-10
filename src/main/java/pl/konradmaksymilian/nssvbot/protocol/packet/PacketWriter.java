@@ -4,7 +4,6 @@ import java.io.*;
 
 import pl.konradmaksymilian.nssvbot.connection.ConnectionException;
 import pl.konradmaksymilian.nssvbot.protocol.Compression;
-import pl.konradmaksymilian.nssvbot.protocol.Position;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
 import pl.konradmaksymilian.nssvbot.protocol.utils.PositionConverter;
 import pl.konradmaksymilian.nssvbot.protocol.utils.StringConverter;
@@ -88,7 +87,7 @@ public class PacketWriter {
                 writeAnimation((AnimationPacket) packet, buffer);
                 break;
             case HELD_ITEM_CHANGE:
-                writeHeldItemChange((HeldItemChangePacket) packet, buffer);
+                writeHeldItemChange((HeldItemChangeServerboundPacket) packet, buffer);
                 break;
             case USE_ITEM:
                 writeUseItem((UseItemPacket) packet, buffer);
@@ -234,7 +233,7 @@ public class PacketWriter {
         VarIntLongConverter.writeVarInt(packet.getHand(), buffer);
     }
 
-    private void writeHeldItemChange(HeldItemChangePacket packet, DataOutputStream buffer) throws IOException {
+    private void writeHeldItemChange(HeldItemChangeServerboundPacket packet, DataOutputStream buffer) throws IOException {
         buffer.writeShort(packet.getSlot());
     }
 

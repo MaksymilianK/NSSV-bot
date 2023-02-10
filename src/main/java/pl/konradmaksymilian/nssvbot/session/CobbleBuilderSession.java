@@ -10,43 +10,47 @@ import pl.konradmaksymilian.nssvbot.utils.ChatFormatter;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.Queue;
 
-public class BuilderSession extends MovableSession {
+public class CobbleBuilderSession extends MovableSession {
+    private static final int FIRST_X = 283399;
+    private static final int FIRST_Z = -5568;
+    private static final int LAST_X = FIRST_X + 160;
+    private static final int LAST_Z = FIRST_Z + 160;
+    private static final int[] COORDS_X = new int[640];
+    private static final int[] COORDS_Z = new int[640];
 
-    private final int Y = 49;
-    private final int FIRST_X = 8625;
-    private final int FIRST_Z = 8727;
-    private final int LAST_X = 8817;
-    private final int LAST_Z = 8919;
-    private final float YAW_ODD = 26.4f;
-    private final float PITCH = 59.6f;
-    private final float YAW_EVEN = 152.7f;
-    private final float YAW_FIRST_LAST = 90.0f;
-    private final float PITCH_FIRST_LAST = 82.5f;
-    private final float YAW_HOLES = 90.0f;
-    private final float PITCH_HOLES = 57.5f;
+    static {
+        COORDS_X[0] = FIRST_X;
+        COORDS_Z[0] = FIRST_Z;
 
-    private final float YAW_CHEST = -67.2f;
-    private final float PITCH_CHEST = 43.0f;
+        for (int i = 1; i < 161; i++) {
+            COORDS_X[i] = COORDS_X[i - 1];
+            COORDS_Z[i] = COORDS_Z[i - 1] - 1;
+        }
+        for (int i = 161; i < 321; i++) {
+            COORDS_X[i] = COORDS_X[i - 1] + 1;
+            COORDS_Z[i] = COORDS_Z[i - 1];
+        }
+        for (int i = 321; i < 481; i++) {
+            COORDS_X[i] = COORDS_X[i - 1];
+            COORDS_Z[i] = COORDS_Z[i - 1] + 1;
+        }
+        for (int i = 481; i < 640; i++) {
+            COORDS_X[i] = COORDS_X[i - 1] - 1;
+            COORDS_Z[i] = COORDS_Z[i - 1];
+        }
+    }
 
-    private final float YAW_SAND_EVEN = -90.0f;
-    private final float PITCH_SAND = 56.5f;
-    private final float YAW_SAND_ODD = 90.0f;
-    private final float PITCH_SAND_LONG = 28.6f;
+    private CobbleBuilderStatus cobbleBuilderStatus = CobbleBuilderStatus.STOPPED;
 
-    private BuilderStatus builderStatus = BuilderStatus.DISABLED;
-    private int currentX;
-    private int currentZ;
-    private int cacheX;
-    private int cacheZ;
-    private Queue<Integer> cancelledX = new ArrayDeque<>();
-    private Queue<Integer> cancelledZ = new ArrayDeque<>();
-    private Slot[] inventory = new Slot[36];
-    private int actionCounter = 1;
+    private int heldItemSlot = 0;
 
-    public BuilderSession(ConnectionManager connection, Timer timer) {
+    private int current;
+    private int next;
+
+    private Slot[] inventory;
+
+    public CobbleBuilderSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
         for (int i = 0; i < 36; i++) {
             inventory[i] = new Slot(new byte[] {});
@@ -59,23 +63,81 @@ public class BuilderSession extends MovableSession {
 
         if (packet.getName().equals(PacketName.BLOCK_CHANGE)) {
             onBlockChange((BlockChangePacket) packet);
+        } else if (packet.getName().equals(PacketName.HELD_ITEM_CHANGE_CLIENTBOUNT)) {
+            onHeldItemChange((HeldItemChangeClientboundPacket) packet);
+        }
+    }
+
+    private void onHeldItemChange(HeldItemChangeClientboundPacket packet) {
+        if (!status.equals(Status.GAME)) {
+            return;
+        }
+
+        heldItemSlot = packet.getSlot();
+    }
+
+    protected void onCobbleBuilderStatusChange() {
+        if (!status.equals(Status.GAME)) {
+            return;
+        }
+
+        if (cobbleBuilderStatus.equals(CobbleBuilderStatus.TP_TO_BUILD)) {
+            connection.sendPacket(new ChatMessageServerboundPacket("/home"));
+        } else if (cobbleBuilderStatus.equals(CobbleBuilderStatus.BUILDING)) {
+            int currentX = (int) Math.floor(x);
+            int currentZ = (int) Math.floor(z);
+            current = -1;
+            for (int i = 0; i < 640; i++) {
+                if (COORDS_X[i] == currentX && COORDS_Z[i] == currentZ) {
+                    current = i;
+                    next = (i + 1) % 640;
+                    break;
+                }
+            }
+            if (current == -1) {
+                throw new RuntimeException("Cannot find current block");
+            }
+
+            setNewDestination(COORDS_X[next] + 0.5, COORDS_Z[next] + 0.5,
+                    getYaw(x, z, COORDS_X[next] + 0.5f, COORDS_Z[next] + 0.5f),
+                    getPitch(x, z, COORDS_X[next] + 0.5f, (float) feetY, COORDS_Z[next] + 0.5f));
+        }
+    }
+
+    @Override
+    protected void onEveryCheck() {
+        super.onEveryCheck();
+
+        if (!status.equals(Status.GAME) || cobbleBuilderStatus.equals(CobbleBuilderStatus.STOPPED)) {
+            return;
+        }
+
+        if (cobbleBuilderStatus.equals(BuilderStatus.MOVING) && !isMoving()) {
+            connection.sendPacket(PlayerBlockPlacementPacket.builder()
+                    .x(COORDS_X[current])
+                    .y((int) feetY - 1)
+                    .z(COORDS_Z[current])
+                    .face(1)
+                    .hand(0)
+                    .cursorX(0.5f)
+                    .cursorY(1.0f)
+                    .cursorZ(0.5f)
+                    .build());
+            connection.sendPacket(new AnimationPacket(0));
         }
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(BuilderStatus.DISABLED) || packet.getStateID() != 0) {
+        if (!status.equals(Status.GAME) || !cobbleBuilderStatus.equals(CobbleBuilderStatus.BUILDING)) {
             return;
         }
 
-        if ((builderStatus.equals(BuilderStatus.BUILDING_SLABS) || builderStatus.equals(BuilderStatus.MOVING)) &&
-                packet.getPosition().getY() == Y) {
-            cancelledX.add(packet.getPosition().getX());
-            cancelledZ.add(packet.getPosition().getZ());
-        } else if ((builderStatus.equals(BuilderStatus.PLACING_SAND) || builderStatus.equals(BuilderStatus.MOVING_SAND)) &&
-                packet.getPosition().getY() == Y + 1) {
-            cancelledX.add(packet.getPosition().getX());
-            cancelledZ.add(packet.getPosition().getZ());
+        if (packet.getPosition().getX() != COORDS_X[current] || packet.getPosition().getY() != (int) feetY ||
+                packet.getPosition().getZ() != COORDS_Z[current]) {
+            return;
         }
+
+        if (packet.getStateID() == )
     }
 
     @Override
@@ -89,60 +151,28 @@ public class BuilderSession extends MovableSession {
     @Override
     protected void onChatMessage(ChatMessageClientboundPacket packet) {
         super.onChatMessage(packet);
-        String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
 
-        if (builderStatus.equals(BuilderStatus.BUYING) && isNsMessage(packet.getMessage())) {
-            if (message.endsWith("wysprzedany.")) {
-                nextChest();
-                moveToChest();
-            } else if (message.contains("w ekwipunku.")) {
-                builderStatus = BuilderStatus.TP_TO_WORK;
-            }
+        if (!status.equals(Status.GAME)) {
+            return;
         }
 
+        String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
         if (!message.endsWith("-")) {
             return;
         }
 
-        if (message.endsWith("--slabs--")) {
-            int[] coords = extractCoords(message);
-            if (coords.length > 0) {
-                startBuildingSlabs(coords[0], coords[1]);
-            } else {
-                startBuildingSlabs();
-            }
-        } else if (message.endsWith("--holes--")) {
-            int[] coords = extractCoords(message);
-            if (coords.length > 0) {
-                startDiggingHoles(coords[0], coords[1]);
-            } else {
-                startDiggingHoles();
-            }
-        } else if (message.endsWith("--sand--")) {
-            int[] coords = extractCoords(message);
-            if (coords.length > 0) {
-                startPlacingSand(coords[0], coords[1]);
-            } else {
-                startPlacingSand();
-            }
-        } else if (message.endsWith("--chest--")) {
-            currentX = 8646;
-            currentZ = 8383;
-            moveToChest();
+        if (message.endsWith("--start--")) {
+            changeCobbleBuilderStatus(CobbleBuilderStatus.TP_TO_BUILD);
         } else if (message.endsWith("--stop--")) {
-            stop();
-        } else if (message.endsWith("--throw--")) {
-            throwItem();
-        } else if (message.endsWith("--tpa--")) {
-            connection.sendPacket(new ChatMessageServerboundPacket("/tpa geniuszmistrz"));
-        } else if (message.endsWith("--status--")) {
-            System.out.println(builderStatus);
-        } else if (message.endsWith("--pos--")) {
-            if (move != null) {
-                System.out.println(move.getDestinationX() + " " + move.getDestinationZ());
-            }
-            System.out.println(x + " " + z);
+            connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
+            move = null;
+            changeCobbleBuilderStatus(CobbleBuilderStatus.STOPPED);
         }
+    }
+
+    private void changeCobbleBuilderStatus(CobbleBuilderStatus cobbleBuilderStatus) {
+        this.cobbleBuilderStatus = cobbleBuilderStatus;
+        onCobbleBuilderStatusChange();
     }
 
     @Override
@@ -151,6 +181,7 @@ public class BuilderSession extends MovableSession {
         if (!status.equals(Status.GAME)) {
             return;
         }
+
         if (packet.getWindowId() == 0 && packet.getSlot() > 8) {
             inventory[packet.getSlot() - 9].setData(packet.getSlotData());
         }
@@ -159,59 +190,16 @@ public class BuilderSession extends MovableSession {
     @Override
     protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
         super.onPlayerPositionAndLook(packet);
+        if (!status.equals(Status.GAME)) {
+            return;
+        }
 
-        if (builderStatus.equals(BuilderStatus.TP_TO_CHESTS) && packet.getX() == 8645.5d && packet.getZ() == 8382.5d) {
-            cancelledX.add(currentX);
-            cancelledZ.add(currentZ);
-            currentX = 8646;
-            currentZ = 8383;
-            moveToChest();
+        if (cobbleBuilderStatus.equals(CobbleBuilderStatus.TP_TO_BUILD)) {
+            changeCobbleBuilderStatus(CobbleBuilderStatus.BUILDING);
         } else if (builderStatus.equals(BuilderStatus.TP_TO_WORK) && currentX != 8645.5d) {
             currentX = cancelledX.poll();
             currentZ = cancelledZ.poll();
             moveToSand();
-        }
-    }
-
-    @Override
-    protected void onConfirmTransaction(ConfirmTransactionClientboundPacket packet) {
-        super.onConfirmTransaction(packet);
-    }
-
-    @Override
-    protected void onEveryCheck() {
-        super.onEveryCheck();
-
-        if (builderStatus.equals(BuilderStatus.DISABLED) || !timer.isNowAfter("nextPossibleBuilderAction")) {
-            return;
-        }
-
-        if (builderStatus.equals(BuilderStatus.MOVING) && !isMoving()) {
-            builderStatus = BuilderStatus.BUILDING_SLABS;
-            placeSlab();
-        } else if (builderStatus.equals(BuilderStatus.BUILDING_SLABS)) {
-            placeSlab();
-        } else if (builderStatus.equals(BuilderStatus.MOVING_HOLES) && !isMoving()) {
-            builderStatus = BuilderStatus.DIGGING_HOLES;
-            digHole();
-        } else if (builderStatus.equals(BuilderStatus.DIGGING_HOLES)) {
-            digHole();
-        } else if (builderStatus.equals(BuilderStatus.MOVING_SAND) && !isMoving()) {
-            builderStatus = BuilderStatus.PLACING_SAND;
-            placeSand();
-        } else if (builderStatus.equals(BuilderStatus.PLACING_SAND)) {
-            placeSand();
-        } else if (builderStatus.equals(BuilderStatus.TP_TO_CHESTS)) {
-            connection.sendPacket(new ChatMessageServerboundPacket("/p home geniuszmistrz 1"));
-            delayNextBuilderAction();
-        } else if (builderStatus.equals(BuilderStatus.MOVING_CHEST) && !isMoving()) {
-            builderStatus = BuilderStatus.BUYING;
-            buy();
-        } else if (builderStatus.equals(BuilderStatus.BUYING)) {
-            buy();
-        } else if (builderStatus.equals(BuilderStatus.TP_TO_WORK)) {
-            connection.sendPacket(new ChatMessageServerboundPacket("/home"));
-            delayNextBuilderAction();
         }
     }
 

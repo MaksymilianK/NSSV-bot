@@ -1,14 +1,12 @@
 package pl.konradmaksymilian.nssvbot.protocol.utils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
-import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HeldItemChangePacket;
+import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HeldItemChangeServerboundPacket;
 
 public class PacketBuilder {
 
@@ -82,8 +80,8 @@ public class PacketBuilder {
         return new SetSlotPacket(windowId, slotId, in.readAllBytes());
     }
 
-    public static HeldItemChangePacket heldItemChange(DataInputStream in) throws IOException {
-        return new HeldItemChangePacket(in.readShort());
+    public static HeldItemChangeServerboundPacket heldItemChange(DataInputStream in) throws IOException {
+        return new HeldItemChangeServerboundPacket(in.readShort());
     }
 
     public static BlockBreakAnimationPacket blockBreakAnimation(DataInputStream in) throws IOException {
