@@ -15,7 +15,6 @@ import java.util.Queue;
 
 public class SlabBuilderSession extends MovableSession {
 
-    private final int Y = 49;
     private final int FIRST_X = 28474;
     private final int FIRST_Z = -5567;
     private final int LAST_X = 28558;
@@ -58,14 +57,16 @@ public class SlabBuilderSession extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(SlabBuilderStatus.DISABLED) || packet.getStateID() != 0) {
+        if (builderStatus.equals(SlabBuilderStatus.DISABLED) || packet.getStateID() == 0) {
             return;
         }
 
-        if ((builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS) || builderStatus.equals(SlabBuilderStatus.MOVING_SLABS)) &&
-                packet.getPosition().getY() == Y) {
-            cancelledX.add(packet.getPosition().getX());
-            cancelledZ.add(packet.getPosition().getZ());
+        if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS) && // || builderStatus.equals(SlabBuilderStatus.MOVING_SLABS)) &&
+                packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
+//            cancelledX.add(packet.getPosition().getX());
+//            cancelledZ.add(packet.getPosition().getZ());
+            nextSlab();
+            moveToSlab();
         }
     }
 
@@ -223,15 +224,29 @@ public class SlabBuilderSession extends MovableSession {
         float newYaw, newPitch;
 
         if (isSlabOdd()) {
-            newX = (double) currentX + 0.5d;
-            newZ = (double) currentZ + 0.75d;
-            newYaw = 0.1f;
-            newPitch = 82.2f;
+            if (currentZ == LAST_Z) {
+                newX = x;
+                newZ = z;
+                newYaw = -130.0f;
+                newPitch = 55.0f;
+            } else {
+                newX = (double) currentX + 0.5d;
+                newZ = (double) currentZ + 0.75d;
+                newYaw = 0.1f;
+                newPitch = 82.2f;
+            }
         } else {
-            newX = (double) currentX + 0.5d;
-            newZ = (double) currentZ + 0.25d;
-            newYaw = 179.9f;
-            newPitch = 82.2f;
+            if (currentZ == FIRST_Z) {
+                newX = x;
+                newZ = z;
+                newYaw = -52.4f;
+                newPitch = 55.0f;
+            } else {
+                newX = (double) currentX + 0.5d;
+                newZ = (double) currentZ + 0.25d;
+                newYaw = 179.9f;
+                newPitch = 82.2f;
+            }
         }
         setNewDestination(newX, newZ, newYaw, newPitch);
         System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
@@ -257,8 +272,6 @@ public class SlabBuilderSession extends MovableSession {
                 .cursorZ(isSlabOdd() ? 0.0f : 1.0f)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
-        nextSlab();
-        moveToSlab();
     }
 
     private void nextSlab() {

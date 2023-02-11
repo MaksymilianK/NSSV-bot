@@ -30,6 +30,6 @@ public class SessionFactory {
 
     public SlabBuilderSession createBuilder() {
         var zlib = new ZlibCompressor();
-        return new SlabBuilderSession(new ConnectionManager(75, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new SlabBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 }

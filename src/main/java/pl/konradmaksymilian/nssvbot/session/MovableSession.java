@@ -14,7 +14,7 @@ import java.util.Random;
 
 public abstract class MovableSession extends Session {
 
-    public static final double MAX_MOVE = 0.25d;
+    public static final double MAX_MOVE = 0.2d;
     public static final double MAX_LOOK = 25.0d;
 
     protected HorizontalMove move;
@@ -84,7 +84,6 @@ public abstract class MovableSession extends Session {
             return;
         }
 
-        if (packet.getFlags() == 0) {
             connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
                     .x(x)
                     .feetY(packet.getFeetY())
@@ -95,9 +94,7 @@ public abstract class MovableSession extends Session {
                     .build()
             );
             connection.sendPacket(new PlayerPacket(true));
-        } else {
-            connection.sendPacket(new PlayerPositionPacket(packet.getX(), packet.getFeetY(), packet.getZ(), true));
-        }
+
 
         timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(3));
         timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(2));
