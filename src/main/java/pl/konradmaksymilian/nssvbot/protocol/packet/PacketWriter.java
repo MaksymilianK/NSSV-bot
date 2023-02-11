@@ -86,7 +86,7 @@ public class PacketWriter {
             case ANIMATION:
                 writeAnimation((AnimationPacket) packet, buffer);
                 break;
-            case HELD_ITEM_CHANGE:
+            case HELD_ITEM_CHANGE_SERVERBOUND:
                 writeHeldItemChange((HeldItemChangeServerboundPacket) packet, buffer);
                 break;
             case USE_ITEM:

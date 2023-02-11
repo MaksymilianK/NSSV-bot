@@ -81,7 +81,7 @@ public class PacketBuilder {
     }
 
     public static HeldItemChangeServerboundPacket heldItemChange(DataInputStream in) throws IOException {
-        return new HeldItemChangeServerboundPacket(in.readShort());
+        return new HeldItemChangeServerboundPacket(in.readByte());
     }
 
     public static BlockBreakAnimationPacket blockBreakAnimation(DataInputStream in) throws IOException {

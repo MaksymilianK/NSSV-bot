@@ -12,5 +12,5 @@ public enum BuilderStatus {
     MOVING_CHEST,
     BUYING,
     TP_TO_WORK,
-    PLACING_SAND;
+    PLACING_SAND, MOVING_TRASH, TRASH;
 }

@@ -171,6 +171,9 @@ public abstract class Session {
             case JOIN_GAME:
                 onJoinGame((JoinGamePacket) packet);
                 break;
+            case CONFIRM_TRANSACTION_CLIENTBOUND:
+                onConfirmTransaction((ConfirmTransactionClientboundPacket) packet);
+                break;
             case PLAYER_POSITION_AND_LOOK_CLIENTBOUND:
                 onPlayerPositionAndLook((PlayerPositionAndLookClientboundPacket) packet);
                 break;
@@ -182,9 +185,6 @@ public abstract class Session {
                 break;
             case SET_SLOT:
                 onSetSlot((SetSlotPacket) packet);
-                break;
-            case CONFIRM_TRANSACTION_CLIENTBOUND:
-                onConfirmTransaction((ConfirmTransactionClientboundPacket) packet);
                 break;
             case SET_COMPRESSION:
                 onSetCompression((SetCompressionPacket) packet);

@@ -14,15 +14,15 @@ import java.util.Random;
 
 public abstract class MovableSession extends Session {
 
-    public static final double MAX_MOVE = 0.2d;
+    public static final double MAX_MOVE = 0.25d;
     public static final double MAX_LOOK = 25.0d;
 
     protected HorizontalMove move;
 
     public MovableSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
-        timer.setTimeToNow("nextMove");
         timer.setTimeToNow("nextUpdate");
+        timer.setTimeToNow("nextPossibleMove");
     }
 
     public void setNewDestination(double newX, double newZ) {
@@ -54,7 +54,7 @@ public abstract class MovableSession extends Session {
     }
 
     protected void checkUpdate() {
-        if (timer.isNowAfter("nextMove")) {
+        if (timer.isNowAfter("nextUpdate")) {
             delayNextUpdate();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
 
@@ -84,17 +84,23 @@ public abstract class MovableSession extends Session {
             return;
         }
 
-        connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
-                .x(x)
-                .feetY(packet.getFeetY())
-                .z(z)
-                .yaw(packet.getFlags() == (byte) 0 ? packet.getYaw() : yaw)
-                .pitch(packet.getFlags() == (byte) 0 ? packet.getPitch() : pitch)
-                .onGround(false)
-                .build()
-        );
-        connection.sendPacket(new PlayerPacket(true));
-        timer.setTimeFromNow("nextMove", Duration.ofSeconds(2));
+        if (packet.getFlags() == 0) {
+            connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
+                    .x(x)
+                    .feetY(packet.getFeetY())
+                    .z(z)
+                    .yaw(packet.getFlags() == (byte) 0 ? packet.getYaw() : yaw)
+                    .pitch(packet.getFlags() == (byte) 0 ? packet.getPitch() : pitch)
+                    .onGround(false)
+                    .build()
+            );
+            connection.sendPacket(new PlayerPacket(true));
+        } else {
+            connection.sendPacket(new PlayerPositionPacket(packet.getX(), packet.getFeetY(), packet.getZ(), true));
+        }
+
+        timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(3));
+        timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(2));
 
         System.out.println("received " + packet.getX() + " " + packet.getFeetY() + " " + packet.getZ() + " " + packet.getYaw() + " " + packet.getPitch());
         System.out.println("sent cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
@@ -121,7 +127,7 @@ public abstract class MovableSession extends Session {
     }
 
     private void checkMove() {
-        if (!timer.isNowAfter("nextMove")) {
+        if (!timer.isNowAfter("nextPossibleMove")) {
             return;
         }
 
@@ -155,17 +161,17 @@ public abstract class MovableSession extends Session {
 
     private void changeLook() {
         if (move.getYaw().get() - yaw > MAX_LOOK) {
-            yaw += (MAX_LOOK + randomMoveNumber());
+            yaw += (MAX_LOOK);
         } else if (move.getYaw().get() - yaw < -MAX_LOOK) {
-            yaw -= MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+            yaw -= MAX_LOOK + (MAX_LOOK);
         } else {
             yaw = move.getYaw().get();
         }
 
         if (move.getPitch().get() - pitch > MAX_LOOK) {
-            pitch += MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+            pitch += MAX_LOOK + (MAX_LOOK);
         } else if (move.getPitch().get() - pitch < -MAX_LOOK) {
-            pitch -= MAX_LOOK + (MAX_LOOK + randomMoveNumber());
+            pitch -= MAX_LOOK + (MAX_LOOK);
         } else {
             pitch = move.getPitch().get();
         }
@@ -173,13 +179,13 @@ public abstract class MovableSession extends Session {
 
     private void changePosition() {
         if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove())) {
-            x += (move.getXMove() + randomMoveNumber());
+            x += (move.getXMove());;
         } else {
             x = move.getDestinationX();
         }
 
         if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove())) {
-            z += (move.getZMove() + randomMoveNumber());
+            z += (move.getZMove());
         } else {
             z = move.getDestinationZ();
         }
@@ -190,10 +196,10 @@ public abstract class MovableSession extends Session {
     }
 
     private boolean looksWhereShould() {
-        return move == null || move.getYaw().isEmpty() || (yaw == move.getYaw().get() && pitch == move.getPitch().get());
+        return move == null || (Math.abs(move.getYaw().get() - yaw) < 0.03f && Math.abs(move.getPitch().get() - pitch) < 0.03f);
     }
 
     private boolean reachedDestination() {
-        return move == null || (x == move.getDestinationX() && z == move.getDestinationZ());
+        return move == null || (Math.abs(move.getDestinationX() - x) < 0.03 && Math.abs(move.getDestinationZ() - z) < 0.03);
     }
 }

@@ -30,6 +30,8 @@ public class HorizontalMove {
             xMove = (distanceX / distance) * MovableSession.MAX_MOVE;
             zMove = (distanceZ / distance) * MovableSession.MAX_MOVE;
         }
+        System.out.println(" ------ move ---------- " + currentX + " " + currentZ + " " + distanceX + " " + distanceZ);
+        System.out.println(" ------ move ---------- " + xMove + " " + zMove);
     }
 
     public double getDestinationX() {
