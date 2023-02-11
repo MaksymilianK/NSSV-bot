@@ -11,6 +11,7 @@ import pl.konradmaksymilian.nssvbot.utils.Timer;
 
 import java.time.Duration;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Queue;
 
 public class SlabBuilderSession extends MovableSession {
@@ -257,7 +258,11 @@ public class SlabBuilderSession extends MovableSession {
 
         if (eq == -1) {
             connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
+            System.out.println("sethome");
             changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_CHESTS);
+            return;
+        } else if (eq == 0) {
+            changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
             return;
         }
 
@@ -306,13 +311,23 @@ public class SlabBuilderSession extends MovableSession {
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
+                    System.out.println(" non empty " + Arrays.toString(inventory[i].getData()));
                     connection.sendPacket(new ClickWindowPacket(
-                            0, i + 9, 0, actionCounter, 1, new byte[]{(byte) 0xff, (byte) 0xff}
+                            0, i + 9, 0, actionCounter, 0, inventory[i].getData()
                     ));
                     actionCounter++;
-                    return 1;
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    connection.sendPacket(new ClickWindowPacket(
+                            0, 36, 0, actionCounter, 0, inventory[i].getData()
+                    ));
+                    actionCounter++;
+                    return 0;
                 } else {
-                    System.out.println(inventory[i]);
+                    System.out.println(" empty " + Arrays.toString(inventory[i].getData()));
                 }
             }
             System.out.println("Skonczyly sie plytki :(");

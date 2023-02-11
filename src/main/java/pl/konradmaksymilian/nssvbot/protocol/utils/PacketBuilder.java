@@ -95,12 +95,15 @@ public class PacketBuilder {
 
     public static WindowItemsPacket windowItems(DataInputStream in) throws IOException {
         int windowId = in.readUnsignedByte();
-        byte[][] slotData = new byte[in.readShort()][];
+        int len = in.readShort();
+        byte[][] slotData = new byte[len][];
         for (int i = 0; i < slotData.length; i++) {
             var bytes = new ArrayList<Byte>();
             bytes.add(in.readByte());
             bytes.add(in.readByte());
             if (bytes.get(0) != -1 || bytes.get(1) != -1) {
+                bytes.add(in.readByte());
+                bytes.add(in.readByte());
                 bytes.add(in.readByte());
                 bytes.add(in.readByte());
             }
