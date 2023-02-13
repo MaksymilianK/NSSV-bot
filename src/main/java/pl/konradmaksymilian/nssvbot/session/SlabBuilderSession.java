@@ -19,7 +19,7 @@ public class SlabBuilderSession extends MovableSession {
     private final int FIRST_X = 28474;
     private final int FIRST_Z = -5567;
     private final int LAST_X = 28558;
-    private final int LAST_Z = -5425;
+    private final int LAST_Z = -5430;
 
     private final int CHEST_X = 28475;
     private final int CHEST_Y = 1;
@@ -34,6 +34,7 @@ public class SlabBuilderSession extends MovableSession {
     private Queue<Integer> cancelledZ = new ArrayDeque<>();
     private Slot[] inventory = new Slot[36];
     private int actionCounter = 1;
+    private int counter = 0;
 
     public SlabBuilderSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
@@ -41,6 +42,7 @@ public class SlabBuilderSession extends MovableSession {
             inventory[i] = new Slot(new byte[] {});
         }
         timer.setTimeToNow("nextPossibleBuy");
+        timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
     }
 
     @Override
@@ -66,8 +68,16 @@ public class SlabBuilderSession extends MovableSession {
                 packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
 //            cancelledX.add(packet.getPosition().getX());
 //            cancelledZ.add(packet.getPosition().getZ());
+            System.out.println("block change " + packet.getStateID());
+            timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
             nextSlab();
             moveToSlab();
+//            counter++;
+//            if (counter == 2) {
+//                nextSlab();
+//                moveToSlab();
+//                counter = 0;
+//            }
         }
     }
 
@@ -119,7 +129,16 @@ public class SlabBuilderSession extends MovableSession {
         }
         if (packet.getWindowId() == 0 && packet.getSlot() > 8) {
             inventory[packet.getSlot() - 9].setData(packet.getSlotData());
+//            if (packet.getSlot() == 36) {
+//                counter++;
+//                if (counter == 2) {
+//                    nextSlab();
+//                    moveToSlab();
+//                    counter = 0;
+//                }
+//            }
         }
+        System.out.println("set slot");
     }
 
     protected void onWindowItems(WindowItemsPacket packet) {
@@ -129,6 +148,10 @@ public class SlabBuilderSession extends MovableSession {
         for (int i = 9; i < 45; i++) {
             inventory[i - 9].setData(packet.getSlotData()[i]);
             System.out.println(inventory[i - 9].getCount());
+            if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS) && inventory[27].getCount() == 0) {
+                System.out.println("empty!!!!!!!!!!!!");
+               // changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
+            }
         }
     }
 
@@ -164,6 +187,13 @@ public class SlabBuilderSession extends MovableSession {
             changeSlabBuilderStatus(SlabBuilderStatus.BUYING);
         } else if (builderStatus.equals(SlabBuilderStatus.BUYING)) {
             buy();
+        } else if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS)) {
+            if (timer.isNowAfter("checkHand")) {
+                timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
+                placeSlab();
+            }
+        } else if (builderStatus.equals(SlabBuilderStatus.MOVE_TO_TP) && !isMoving()) {
+            changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_CHESTS);
         }
     }
 
@@ -171,9 +201,51 @@ public class SlabBuilderSession extends MovableSession {
         if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS)) {
             placeSlab();
         } else if (builderStatus.equals(SlabBuilderStatus.TP_TO_CHESTS)) {
+            connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
             connection.sendPacket(new ChatMessageServerboundPacket("/p visit GeniuszMistrz 2"));
+            System.out.println("sethome");
         } else if (builderStatus.equals(SlabBuilderStatus.TP_TO_WORK)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/home"));
+        } else if (builderStatus.equals(SlabBuilderStatus.MOVE_TO_TP)) {
+            int prevX = currentX;
+            int prevZ = currentZ;
+            if ((currentZ == LAST_Z - 1 && !isSlabOdd()) || (currentZ == FIRST_Z + 1 && isSlabOdd())) {
+                prevX = currentX - 1;
+            } else if (!isSlabOdd()) {
+                prevZ = currentZ - 1;
+            } else {
+                prevZ = currentZ + 1;
+            }
+
+            double newX, newZ;
+            float newYaw, newPitch;
+
+            if (isSlabOdd()) {
+                if (prevZ == LAST_Z) {
+                    newX = x;
+                    newZ = z;
+                    newYaw = -130.0f;
+                    newPitch = 55.0f;
+                } else {
+                    newX = (double) prevX + 0.5d;
+                    newZ = (double) prevZ + 0.75d;
+                    newYaw = 0.1f;
+                    newPitch = 82.2f;
+                }
+            } else {
+                if (prevZ == FIRST_Z) {
+                    newX = x;
+                    newZ = z;
+                    newYaw = -52.4f;
+                    newPitch = 55.0f;
+                } else {
+                    newX = (double) prevX + 0.5d;
+                    newZ = (double) prevZ + 0.25d;
+                    newYaw = 179.9f;
+                    newPitch = 82.2f;
+                }
+            }
+            setNewDestination(newX, newZ, newYaw, newPitch);
         }
     }
 
@@ -257,13 +329,13 @@ public class SlabBuilderSession extends MovableSession {
         int eq = checkEq();
 
         if (eq == -1) {
-            connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
-            System.out.println("sethome");
-            changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_CHESTS);
+            changeSlabBuilderStatus(SlabBuilderStatus.MOVE_TO_TP);
             return;
         } else if (eq == 0) {
             changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
             return;
+        } else {
+            timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
         }
 
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
@@ -308,6 +380,7 @@ public class SlabBuilderSession extends MovableSession {
     }
 
     private int checkEq() {
+        System.out.println("eq");
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
@@ -324,6 +397,7 @@ public class SlabBuilderSession extends MovableSession {
                     connection.sendPacket(new ClickWindowPacket(
                             0, 36, 0, actionCounter, 0, inventory[i].getData()
                     ));
+                    connection.sendPacket(new CloseWindowPacket(0));
                     actionCounter++;
                     return 0;
                 } else {

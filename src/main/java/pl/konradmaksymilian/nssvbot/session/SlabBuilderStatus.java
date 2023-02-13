@@ -7,5 +7,6 @@ public enum SlabBuilderStatus {
     TP_TO_CHESTS,
     MOVING_CHEST,
     BUYING,
-    TP_TO_WORK
+    TP_TO_WORK,
+    MOVE_TO_TP
 }
