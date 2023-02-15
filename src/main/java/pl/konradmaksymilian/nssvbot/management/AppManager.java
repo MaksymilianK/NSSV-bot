@@ -78,6 +78,12 @@ public class AppManager {
             case BUILDER_JOIN:
                 onJoin((BuilderJoinCommand) command);
                 break;
+            case DIGGER_JOIN:
+                onJoin((DiggerJoinCommand) command);
+                break;
+            case FENCE_JOIN:
+                onJoin((FenceJoinCommand) command);
+                break;
             case TEST_JOIN:
                 onJoin((TestJoinCommand) command);
                 break;

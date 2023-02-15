@@ -194,7 +194,11 @@ public class SessionsManager {
             session = sessionFactory.createDealer();
         } else if (commandName.equals(CommandName.BUILDER_JOIN)) {
             session = sessionFactory.createBuilder();
-        } else {
+        } else if (commandName.equals(CommandName.DIGGER_JOIN)) {
+            session = sessionFactory.createDigger();
+        }  else if (commandName.equals(CommandName.FENCE_JOIN)) {
+            session = sessionFactory.createFence();
+        }else {
             throw new SessionException("Cannot recognise type of session to create: '" + commandName + "'");
         }
 

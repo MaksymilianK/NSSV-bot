@@ -57,8 +57,6 @@ public abstract class MovableSession extends Session {
         if (timer.isNowAfter("nextUpdate")) {
             delayNextUpdate();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
-
-            System.out.println("check " + x + " " + feetY + " " + z);
         }
     }
 
@@ -79,11 +77,22 @@ public abstract class MovableSession extends Session {
 
     @Override
     protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
-        super.onPlayerPositionAndLook(packet);
+        //super.onPlayerPositionAndLook(packet);
+
         if (!status.equals(Status.GAME)) {
             return;
         }
 
+        x = packet.getX();
+        feetY = (int) packet.getFeetY();
+        z = packet.getZ();
+
+        if (packet.getFlags() == (byte) 0) {
+            yaw = packet.getYaw();
+            pitch = packet.getPitch();
+        }
+
+        if (packet.getFlags() == (byte) 0) {
             connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
                     .x(x)
                     .feetY(packet.getFeetY())
@@ -94,10 +103,21 @@ public abstract class MovableSession extends Session {
                     .build()
             );
             connection.sendPacket(new PlayerPacket(true));
+        } else {
+            connection.sendPacket(PlayerPositionAndLookServerboundPacket.builder()
+                    .x(x)
+                    .feetY(packet.getFeetY())
+                    .z(z)
+                    .yaw(yaw)
+                    .pitch(pitch)
+                    .onGround(true)
+                    .build()
+            );
+        }
+        connection.sendPacket(new TeleportConfirmPacket(packet.getTeleportId()));
 
-
-        timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(3));
-        timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(2));
+        timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(5));
+        timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(1));
 
         System.out.println("received " + packet.getX() + " " + packet.getFeetY() + " " + packet.getZ() + " " + packet.getYaw() + " " + packet.getPitch());
         System.out.println("sent cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);

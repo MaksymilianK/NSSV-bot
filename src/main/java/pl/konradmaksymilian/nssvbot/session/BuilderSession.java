@@ -136,7 +136,6 @@ public class BuilderSession extends MovableSession {
         } else if (message.endsWith("--tpa--")) {
             connection.sendPacket(new ChatMessageServerboundPacket("/tpa geniuszmistrz"));
         } else if (message.endsWith("--status--")) {
-            System.out.println(builderStatus);
         } else if (message.endsWith("--pos--")) {
             if (move != null) {
                 System.out.println(move.getDestinationX() + " " + move.getDestinationZ());

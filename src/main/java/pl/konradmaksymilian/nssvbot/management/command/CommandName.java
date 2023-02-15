@@ -11,7 +11,9 @@ public enum CommandName {
     AD_ACTIVE ("ad"),
     AD_DETACHED ("ad"),
     LEAVE_ACTIVE ("leave"),
-    LEAVE_DETACHED ("leave");
+    LEAVE_DETACHED ("leave"),
+    DIGGER_JOIN("digger"),
+    FENCE_JOIN("fence");
 
     private final String label;
 

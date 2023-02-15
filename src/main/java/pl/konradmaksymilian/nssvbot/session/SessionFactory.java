@@ -1,6 +1,5 @@
 package pl.konradmaksymilian.nssvbot.session;
 
-import pl.konradmaksymilian.nssvbot.config.DealerConfig;
 import pl.konradmaksymilian.nssvbot.config.DealerConfigReader;
 import pl.konradmaksymilian.nssvbot.connection.ConnectionManager;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketReader;
@@ -31,5 +30,15 @@ public class SessionFactory {
     public SlabBuilderSession createBuilder() {
         var zlib = new ZlibCompressor();
         return new SlabBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
+    public HoleDiggerSession createDigger() {
+        var zlib = new ZlibCompressor();
+        return new HoleDiggerSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
+    public FenceBuilderSession createFence() {
+        var zlib = new ZlibCompressor();
+        return new FenceBuilderSession(new ConnectionManager(150, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 }

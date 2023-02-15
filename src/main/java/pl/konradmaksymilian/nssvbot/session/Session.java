@@ -135,7 +135,6 @@ public abstract class Session {
 
         if (status.equals(Status.LOGIN)) {
             sendChatMessage("/login " + player.getPassword());
-            System.out.println("login");
             delayNextLoginAttempt();
         } else if (status.equals(Status.HUB) && slotData != null) {
             connection.sendPacket(new ClickWindowPacket(windowId, 37, 0, windowCounter, 0, slotData));
