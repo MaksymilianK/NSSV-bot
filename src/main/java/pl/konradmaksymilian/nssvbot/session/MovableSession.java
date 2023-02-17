@@ -14,10 +14,11 @@ import java.util.Random;
 
 public abstract class MovableSession extends Session {
 
-    public static final double MAX_MOVE = 0.2d;
+    public static final double MAX_MOVE = 0.18d;
     public static final double MAX_LOOK = 25.0d;
 
     protected HorizontalMove move;
+    double speed = 0.75d;
 
     public MovableSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
@@ -144,7 +145,7 @@ public abstract class MovableSession extends Session {
     }
 
     private void checkMove() {
-        if (!timer.isNowAfter("nextPossibleMove")) {
+        if (move == null || !timer.isNowAfter("nextPossibleMove")) {
             return;
         }
 
@@ -154,11 +155,11 @@ public abstract class MovableSession extends Session {
         if (reachedDestination && !looksWhereShould) {
             changeLook();
             connection.sendPacket(new PlayerLookPacket(yaw, pitch, true));
-            System.out.println("cl " + yaw + " " + pitch);
+            //System.out.println("cl " + yaw + " " + pitch);
         } else if (!reachedDestination && looksWhereShould) {
             changePosition();
             connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
-            System.out.println("cp " + x + " " + feetY + " " + z);
+            //System.out.println("cp " + x + " " + feetY + " " + z);
         } else if (!reachedDestination) {
             changePosition();
             //connection.sendPacket(new PlayerPositionPacket(x, feetY, z, true));
@@ -172,7 +173,7 @@ public abstract class MovableSession extends Session {
                     .onGround(true)
                     .build()
             );
-            System.out.println("cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
+            //System.out.println("cpl " + x + " " + feetY + " " + z + " " + yaw + " " + pitch);
         }
     }
 
@@ -195,16 +196,23 @@ public abstract class MovableSession extends Session {
     }
 
     private void changePosition() {
-        if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove())) {
-            x += (move.getXMove());;
+        if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove() * speed)) {
+            x += move.getXMove() * speed;
         } else {
             x = move.getDestinationX();
         }
 
-        if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove())) {
-            z += (move.getZMove());
+        if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove() * speed)) {
+            z += move.getZMove() * speed;
         } else {
             z = move.getDestinationZ();
+        }
+
+        if (speed < 1.0d) {
+            speed += 0.6;
+        }
+        if (speed > 1.0d) {
+            speed = 1.0d;
         }
     }
 

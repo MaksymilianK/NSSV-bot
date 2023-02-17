@@ -16,8 +16,8 @@ import pl.konradmaksymilian.nssvbot.protocol.packet.PacketWriter;
 
 public class ConnectionManager {
     
-    public static final String HOST = "127.0.0.1";
-    public static final short PORT = 8080;
+    public static final String HOST = "nssv.pl";
+    public static final short PORT = 25565;
 
     private final int delay;
     private final PacketReader packetReader;

@@ -27,7 +27,7 @@ public class SessionFactory {
                 config.get());
     }
 
-    public SlabBuilderSession createBuilder() {
+    public SlabBuilderSession createSlab() {
         var zlib = new ZlibCompressor();
         return new SlabBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
@@ -39,6 +39,11 @@ public class SessionFactory {
 
     public FenceBuilderSession createFence() {
         var zlib = new ZlibCompressor();
-        return new FenceBuilderSession(new ConnectionManager(150, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new FenceBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
+    public SandBuilderSession createSand() {
+        var zlib = new ZlibCompressor();
+        return new SandBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 }

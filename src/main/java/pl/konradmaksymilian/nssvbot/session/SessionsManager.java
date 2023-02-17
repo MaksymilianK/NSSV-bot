@@ -192,8 +192,10 @@ public class SessionsManager {
             session = sessionFactory.createBasicAfk();
         } else if (commandName.equals(CommandName.DEALER_JOIN)) {
             session = sessionFactory.createDealer();
-        } else if (commandName.equals(CommandName.BUILDER_JOIN)) {
-            session = sessionFactory.createBuilder();
+        } else if (commandName.equals(CommandName.SLAB_JOIN)) {
+            session = sessionFactory.createSlab();
+        } else if (commandName.equals(CommandName.SAND_JOIN)) {
+            session = sessionFactory.createSand();
         } else if (commandName.equals(CommandName.DIGGER_JOIN)) {
             session = sessionFactory.createDigger();
         }  else if (commandName.equals(CommandName.FENCE_JOIN)) {

@@ -10,32 +10,30 @@ import pl.konradmaksymilian.nssvbot.utils.ChatFormatter;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 
 import java.time.Duration;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Queue;
 
-public class SlabBuilderSession extends MovableSession {
+public class SandBuilderSession extends MovableSession {
 
-    private final int FIRST_X = 28400;
-    private final int FIRST_Z = -5567;
-    private final int LAST_X = 28558;
-    private final int LAST_Z = -5409;
+    private final int FIRST_X = 28401;
+    private final int FIRST_Z = -5566;
+    private final int LAST_X = 28557;
+    private final int LAST_Z = -5410;
 
     private final int CHEST_X = 28475;
     private final int CHEST_Y = 1;
-    private final int CHEST_Z = -5486;
+    private final int CHEST_Z = -5485;
 
-    private SlabBuilderStatus builderStatus = SlabBuilderStatus.DISABLED;
+    private SandBuilderStatus builderStatus = SandBuilderStatus.DISABLED;
     private int currentX;
     private int currentZ;
 
     private final Slot[] inventory = new Slot[36];
     private int actionCounter = 1;
 
-    public SlabBuilderSession(ConnectionManager connection, Timer timer) {
+    public SandBuilderSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
         for (int i = 0; i < 36; i++) {
-            inventory[i] = new Slot(new byte[] {});
+            inventory[i] = new Slot(new byte[]{});
         }
         timer.setTimeToNow("nextPossibleBuy");
         timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
@@ -56,22 +54,22 @@ public class SlabBuilderSession extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(SlabBuilderStatus.DISABLED) || packet.getStateID() == 0) {
+        if (builderStatus.equals(SandBuilderStatus.DISABLED) || packet.getStateID() == 0) {
             return;
         }
 
-        if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS) && // || builderStatus.equals(SlabBuilderStatus.MOVING_SLABS)) &&
+        if (builderStatus.equals(SandBuilderStatus.BUILDING_SAND) && // || builderStatus.equals(SandBuilderStatus.MOVING_SANDS)) &&
                 packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
 //            cancelledX.add(packet.getPosition().getX());
 //            cancelledZ.add(packet.getPosition().getZ());
             System.out.println("block change " + packet.getStateID());
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-            nextSlab();
-            moveToSlab();
+            nextSand();
+            moveToSand();
 //            counter++;
 //            if (counter == 2) {
-//                nextSlab();
-//                moveToSlab();
+//                nextSand();
+//                moveToSand();
 //                counter = 0;
 //            }
         }
@@ -82,11 +80,11 @@ public class SlabBuilderSession extends MovableSession {
         super.onChatMessage(packet);
         String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
 
-        if (builderStatus.equals(SlabBuilderStatus.BUYING)) {
+        if (builderStatus.equals(SandBuilderStatus.BUYING)) {
             if (message.endsWith("wysprzedany.")) {
-                changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_WORK);
+                changeSandBuilderStatus(SandBuilderStatus.TP_TO_WORK);
             } else if (message.contains("w ekwipunku.")) {
-                changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_WORK);
+                changeSandBuilderStatus(SandBuilderStatus.TP_TO_WORK);
             }
         }
 
@@ -97,9 +95,9 @@ public class SlabBuilderSession extends MovableSession {
         if (message.endsWith("--start--")) {
             int[] coords = extractCoords(message);
             if (coords.length > 0) {
-                startBuildingSlabs(coords[0], coords[1]);
+                startBuildingSand(coords[0], coords[1]);
             } else {
-                startBuildingSlabs();
+                startBuildingSand();
             }
         } else if (message.endsWith("--stop--")) {
             stop();
@@ -128,8 +126,8 @@ public class SlabBuilderSession extends MovableSession {
 //            if (packet.getSlot() == 36) {
 //                counter++;
 //                if (counter == 2) {
-//                    nextSlab();
-//                    moveToSlab();
+//                    nextSand();
+//                    moveToSand();
 //                    counter = 0;
 //                }
 //            }
@@ -144,9 +142,9 @@ public class SlabBuilderSession extends MovableSession {
         for (int i = 9; i < 45; i++) {
             inventory[i - 9].setData(packet.getSlotData()[i]);
             System.out.println(inventory[i - 9].getCount());
-            if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS) && inventory[27].getCount() == 0) {
+            if (builderStatus.equals(SandBuilderStatus.BUILDING_SAND) && inventory[27].getCount() == 0) {
                 System.out.println("empty!!!!!!!!!!!!");
-               // changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
+                // changeSandBuilderStatus(SandBuilderStatus.MOVING_SANDS);
             }
         }
     }
@@ -158,14 +156,14 @@ public class SlabBuilderSession extends MovableSession {
             return;
         }
 
-        if (builderStatus.equals(SlabBuilderStatus.TP_TO_CHESTS)) {
+        if (builderStatus.equals(SandBuilderStatus.TP_TO_CHESTS)) {
             //cancelledX.add(currentX);
             //cancelledZ.add(currentZ);
             moveToChest();
-        } else if (builderStatus.equals(SlabBuilderStatus.TP_TO_WORK)) {
+        } else if (builderStatus.equals(SandBuilderStatus.TP_TO_WORK)) {
             //currentX = cancelledX.poll();
             //currentZ = cancelledZ.poll();
-            moveToSlab();
+            moveToSand();
         }
     }
 
@@ -173,81 +171,39 @@ public class SlabBuilderSession extends MovableSession {
     protected void onEveryCheck() {
         super.onEveryCheck();
 
-        if (builderStatus.equals(SlabBuilderStatus.DISABLED)) {
+        if (builderStatus.equals(SandBuilderStatus.DISABLED)) {
             return;
         }
 
-        if (builderStatus.equals(SlabBuilderStatus.MOVING_SLABS) && !isMoving()) {
-            changeSlabBuilderStatus(SlabBuilderStatus.BUILDING_SLABS);
-        } else if (builderStatus.equals(SlabBuilderStatus.MOVING_CHEST) && !isMoving()) {
-            changeSlabBuilderStatus(SlabBuilderStatus.BUYING);
-        } else if (builderStatus.equals(SlabBuilderStatus.BUYING)) {
+        if (builderStatus.equals(SandBuilderStatus.MOVING_SAND) && !isMoving()) {
+            changeSandBuilderStatus(SandBuilderStatus.BUILDING_SAND);
+        } else if (builderStatus.equals(SandBuilderStatus.MOVING_CHEST) && !isMoving()) {
+            changeSandBuilderStatus(SandBuilderStatus.BUYING);
+        } else if (builderStatus.equals(SandBuilderStatus.BUYING)) {
             buy();
-        } else if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS)) {
+        } else if (builderStatus.equals(SandBuilderStatus.BUILDING_SAND)) {
             if (timer.isNowAfter("checkHand")) {
                 timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-                placeSlab();
+                placeSand();
             }
-        } else if (builderStatus.equals(SlabBuilderStatus.MOVE_TO_TP) && !isMoving()) {
-            changeSlabBuilderStatus(SlabBuilderStatus.TP_TO_CHESTS);
         }
     }
 
-    private void onChangeSlabBuilderStatus() {
-        if (builderStatus.equals(SlabBuilderStatus.BUILDING_SLABS)) {
-            placeSlab();
-        } else if (builderStatus.equals(SlabBuilderStatus.TP_TO_CHESTS)) {
+    private void onChangeSandBuilderStatus() {
+        if (builderStatus.equals(SandBuilderStatus.BUILDING_SAND)) {
+            placeSand();
+        } else if (builderStatus.equals(SandBuilderStatus.TP_TO_CHESTS)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
             connection.sendPacket(new ChatMessageServerboundPacket("/p visit GeniuszMistrz 2"));
             System.out.println("sethome");
-        } else if (builderStatus.equals(SlabBuilderStatus.TP_TO_WORK)) {
+        } else if (builderStatus.equals(SandBuilderStatus.TP_TO_WORK)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/home"));
-        } else if (builderStatus.equals(SlabBuilderStatus.MOVE_TO_TP)) {
-            int prevX = currentX;
-            int prevZ = currentZ;
-            if ((currentZ == LAST_Z - 1 && !isSlabOdd()) || (currentZ == FIRST_Z + 1 && isSlabOdd())) {
-                prevX = currentX - 1;
-            } else if (!isSlabOdd()) {
-                prevZ = currentZ - 1;
-            } else {
-                prevZ = currentZ + 1;
-            }
-
-            double newX, newZ;
-            float newYaw, newPitch;
-
-            if (isSlabOdd()) {
-                if (prevZ == LAST_Z) {
-                    newX = x;
-                    newZ = z;
-                    newYaw = -130.0f;
-                    newPitch = 55.0f;
-                } else {
-                    newX = (double) prevX + 0.5d;
-                    newZ = (double) prevZ + 0.75d;
-                    newYaw = 0.1f;
-                    newPitch = 82.2f;
-                }
-            } else {
-                if (prevZ == FIRST_Z) {
-                    newX = x;
-                    newZ = z;
-                    newYaw = -52.4f;
-                    newPitch = 55.0f;
-                } else {
-                    newX = (double) prevX + 0.5d;
-                    newZ = (double) prevZ + 0.25d;
-                    newYaw = 179.9f;
-                    newPitch = 82.2f;
-                }
-            }
-            setNewDestination(newX, newZ, newYaw, newPitch);
         }
     }
 
-    private void changeSlabBuilderStatus(SlabBuilderStatus builderStatus) {
+    private void changeSandBuilderStatus(SandBuilderStatus builderStatus) {
         this.builderStatus = builderStatus;
-        onChangeSlabBuilderStatus();
+        onChangeSandBuilderStatus();
     }
 
     private void buy() {
@@ -270,64 +226,62 @@ public class SlabBuilderSession extends MovableSession {
     }
 
     private void moveToChest() {
-        changeSlabBuilderStatus(SlabBuilderStatus.MOVING_CHEST);
+        changeSandBuilderStatus(SandBuilderStatus.MOVING_CHEST);
         setNewDestination(x, z, getYaw(x, z, CHEST_X, CHEST_Z), getPitch(x, z, CHEST_X, CHEST_Y, CHEST_Z));
     }
 
-    private void startBuildingSlabs() {
-        startBuildingSlabs(FIRST_X, FIRST_Z);
+    private void startBuildingSand() {
+        startBuildingSand(FIRST_X, FIRST_Z);
     }
 
-    private void startBuildingSlabs(int firstX, int firstZ) {
+    private void startBuildingSand(int firstX, int firstZ) {
         currentX = firstX;
         currentZ = firstZ;
-        //cacheX = 0;
-        //cacheZ = 0;
-        moveToSlab();
+        moveToSand();
     }
 
-    private void moveToSlab() {
-        changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
+    private void moveToSand() {
+        changeSandBuilderStatus(SandBuilderStatus.MOVING_SAND);
         double newX, newZ;
         float newYaw, newPitch;
 
-        if (isSlabOdd()) {
-            if (currentZ == LAST_Z) {
-                newX = x;
-                newZ = z;
-                newYaw = -130.0f;
-                newPitch = 55.0f;
+        if (isSandOdd()) {
+            if (currentZ == FIRST_Z) {
+                newX = currentX + 1.5d;
+                newZ = currentZ + 0.5d;
+                newYaw = 90.0f;
+                newPitch = 57.0f;
             } else {
-                newX = (double) currentX + 0.5d;
-                newZ = (double) currentZ + 0.75d;
+                newX = currentX + 0.5d;
+                newZ = currentZ - 0.5d;
                 newYaw = 0.1f;
-                newPitch = 82.2f;
+                newPitch = 57.1f;
             }
         } else {
-            if (currentZ == FIRST_Z) {
-                newX = x;
-                newZ = z;
-                newYaw = -52.4f;
-                newPitch = 55.0f;
+            if (currentZ == LAST_Z) {
+                newX = currentX + 1.5d;
+                newZ = currentZ + 0.5d;
+                newYaw = 90.0f;
+                newPitch = 56.9f;
             } else {
-                newX = (double) currentX + 0.5d;
-                newZ = (double) currentZ + 0.25d;
-                newYaw = 179.9f;
-                newPitch = 82.2f;
+                newX = currentX + 0.5d;
+                newZ = currentZ + 1.5d;
+                newYaw = -179.9f;
+                newPitch = 57.2f;
             }
         }
         setNewDestination(newX, newZ, newYaw, newPitch);
         System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
     }
 
-    private void placeSlab() {
+    private void placeSand() {
         int eq = checkEq();
 
         if (eq == -1) {
-            changeSlabBuilderStatus(SlabBuilderStatus.MOVE_TO_TP);
+            changeSandBuilderStatus(SandBuilderStatus.TP_TO_CHESTS);
             return;
         } else if (eq == 0) {
-            changeSlabBuilderStatus(SlabBuilderStatus.MOVING_SLABS);
+            changeSandBuilderStatus(SandBuilderStatus.MOVING_SAND);
             return;
         } else {
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
@@ -336,46 +290,32 @@ public class SlabBuilderSession extends MovableSession {
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
                 .x(currentX)
                 .y((int) feetY - 1)
-                .z(isSlabOdd() ? currentZ + 1 : currentZ - 1)
-                .face(isSlabOdd() ? 2 : 3)
+                .z(currentZ)
+                .face(1)
                 .hand(0)
                 .cursorX(0.5f)
-                .cursorY(0.875f)
-                .cursorZ(isSlabOdd() ? 0.0f : 1.0f)
+                .cursorY(1.0f)
+                .cursorZ(0.5f)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
     }
 
-    private void nextSlab() {
-//        if (cacheX != 0) {
-//            currentX = cacheX;
-//            currentZ = cacheZ;
-//            cacheX = 0;
-//            cacheZ = 0;
-//        }
+    private void nextSand() {
+        if ((currentZ == LAST_Z && !isSandOdd()) || (currentZ == FIRST_Z && isSandOdd())) {
+            currentX += 2;
+        } else if (!isSandOdd()) {
+            currentZ += 2;
+        } else {
+            currentZ -= 2;
+        }
 
-       // if (cancelledX.isEmpty()) {
-            if ((currentZ == LAST_Z && !isSlabOdd()) || (currentZ == FIRST_Z && isSlabOdd())) {
-                currentX++;
-            } else if (!isSlabOdd()) {
-                currentZ++;
-            } else {
-                currentZ--;
-            }
-
-            if (currentX > LAST_X) {
-                changeSlabBuilderStatus(SlabBuilderStatus.DISABLED);
-            }
-       // } else {
-       //     cacheX = currentX;
-       //     cacheZ = currentZ;
-       //     currentX = cancelledX.poll();
-       //     currentZ = cancelledZ.poll();
-       // }
+        if (currentX > LAST_X) {
+            changeSandBuilderStatus(SandBuilderStatus.DISABLED);
+        }
     }
 
-    private boolean isSlabOdd() {
-        return currentX % 2 == 1;
+    private boolean isSandOdd() {
+        return currentX % 4 == 3;
     }
 
     private int checkEq() {
@@ -403,7 +343,7 @@ public class SlabBuilderSession extends MovableSession {
                     System.out.println(" empty " + Arrays.toString(inventory[i].getData()));
                 }
             }
-            System.out.println("Skonczyly sie plytki :(");
+            System.out.println("Skonczyl sie piasek :(");
             return -1;
         } else {
             return 1;
@@ -411,9 +351,7 @@ public class SlabBuilderSession extends MovableSession {
     }
 
     private void stop() {
-        changeSlabBuilderStatus(SlabBuilderStatus.DISABLED);
-        //cancelledX.clear();
-        //cancelledZ.clear();
+        changeSandBuilderStatus(SandBuilderStatus.DISABLED);
         move = null;
     }
 
@@ -424,17 +362,13 @@ public class SlabBuilderSession extends MovableSession {
             String[] coords = message.substring(first + 1, last).split(";");
             int x = Integer.parseInt(coords[0]);
             int z = Integer.parseInt(coords[1]);
-            return new int[] {x, z};
+            return new int[]{x, z};
         } else {
-            return new int[] {};
+            return new int[]{};
         }
     }
 
     private void throwItem() {
         connection.sendPacket(new PlayerDiggingPacket(3, new Position(0, 0, 0), 0));
-    }
-
-    private boolean isEmpty() {
-        return currentX % 8 == 5 && currentZ % 8 == 3;
     }
 }

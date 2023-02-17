@@ -41,7 +41,7 @@ public final class CommandReader {
             case "test":
                 command = buildTestJoinCommand(payload);
                 break;
-            case "builder":
+            case "slab":
                 command = buildBuilderJoinCommand(payload);
                 break;
             case "digger":
@@ -49,6 +49,9 @@ public final class CommandReader {
                 break;
             case "fence":
                 command = buildFenceJoinCommand(payload);
+                break;
+            case "sand":
+                command = buildSandJoinCommand(payload);
                 break;
             case "attach":
                 command = buildAttachCommand(payload);
@@ -104,9 +107,9 @@ public final class CommandReader {
         }
     }
 
-    private static BuilderJoinCommand buildBuilderJoinCommand(String[] parts) {
+    private static SlabJoinCommand buildBuilderJoinCommand(String[] parts) {
         if (parts.length == 1) {
-            return new BuilderJoinCommand(parts[0]);
+            return new SlabJoinCommand(parts[0]);
         } else {
             throw new CommandReadingException("Command 'builder [nickOrAlias]' is too long");
         }
@@ -125,6 +128,14 @@ public final class CommandReader {
             return new FenceJoinCommand(parts[0]);
         } else {
             throw new CommandReadingException("Command 'fence [nickOrAlias]' is too long");
+        }
+    }
+
+    private static SandJoinCommand buildSandJoinCommand(String[] parts) {
+        if (parts.length == 1) {
+            return new SandJoinCommand(parts[0]);
+        } else {
+            throw new CommandReadingException("Command 'sand [nickOrAlias]' is too long");
         }
     }
     

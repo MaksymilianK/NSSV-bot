@@ -4,7 +4,7 @@ public enum CommandName {
 
     JOIN ("join"),
     DEALER_JOIN ("dealer"),
-    BUILDER_JOIN ("builder"),
+    SLAB_JOIN("slab"),
     TEST_JOIN ("test"),
     ATTACH ("attach"),
     DETACH ("detach"),
@@ -13,7 +13,8 @@ public enum CommandName {
     LEAVE_ACTIVE ("leave"),
     LEAVE_DETACHED ("leave"),
     DIGGER_JOIN("digger"),
-    FENCE_JOIN("fence");
+    FENCE_JOIN("fence"),
+    SAND_JOIN("sand");
 
     private final String label;
 
