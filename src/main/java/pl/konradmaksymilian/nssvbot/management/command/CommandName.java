@@ -13,8 +13,10 @@ public enum CommandName {
     LEAVE_ACTIVE ("leave"),
     LEAVE_DETACHED ("leave"),
     DIGGER_JOIN("digger"),
-    FENCE_JOIN("fence"),
-    SAND_JOIN("sand");
+    GATE_JOIN("gate"),
+    SAND_JOIN("sand"),
+    CACTUS_JOIN("cactus"),
+    FENCE_JOIN("fence");
 
     private final String label;
 

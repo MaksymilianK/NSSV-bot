@@ -47,11 +47,17 @@ public final class CommandReader {
             case "digger":
                 command = buildDiggerJoinCommand(payload);
                 break;
+            case "gate":
+                command = buildGateJoinCommand(payload);
+                break;
             case "fence":
                 command = buildFenceJoinCommand(payload);
                 break;
             case "sand":
                 command = buildSandJoinCommand(payload);
+                break;
+            case "cactus":
+                command = buildCactusJoinCommand(payload);
                 break;
             case "attach":
                 command = buildAttachCommand(payload);
@@ -123,9 +129,9 @@ public final class CommandReader {
         }
     }
 
-    private static FenceJoinCommand buildFenceJoinCommand(String[] parts) {
+    private static GateJoinCommand buildGateJoinCommand(String[] parts) {
         if (parts.length == 1) {
-            return new FenceJoinCommand(parts[0]);
+            return new GateJoinCommand(parts[0]);
         } else {
             throw new CommandReadingException("Command 'fence [nickOrAlias]' is too long");
         }
@@ -136,6 +142,22 @@ public final class CommandReader {
             return new SandJoinCommand(parts[0]);
         } else {
             throw new CommandReadingException("Command 'sand [nickOrAlias]' is too long");
+        }
+    }
+
+    private static CactusJoinCommand buildCactusJoinCommand(String[] parts) {
+        if (parts.length == 1) {
+            return new CactusJoinCommand(parts[0]);
+        } else {
+            throw new CommandReadingException("Command 'cactus [nickOrAlias]' is too long");
+        }
+    }
+
+    private static FenceJoinCommand buildFenceJoinCommand(String[] parts) {
+        if (parts.length == 1) {
+            return new FenceJoinCommand(parts[0]);
+        } else {
+            throw new CommandReadingException("Command 'fence [nickOrAlias]' is too long");
         }
     }
     

@@ -37,13 +37,23 @@ public class SessionFactory {
         return new HoleDiggerSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
-    public FenceBuilderSession createFence() {
+    public GateBuilderSession createGate() {
         var zlib = new ZlibCompressor();
-        return new FenceBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new GateBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
     public SandBuilderSession createSand() {
         var zlib = new ZlibCompressor();
         return new SandBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
+    public CactusBuilderSession createCactus() {
+        var zlib = new ZlibCompressor();
+        return new CactusBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+    }
+
+    public FenceBuilderSession createFence() {
+        var zlib = new ZlibCompressor();
+        return new FenceBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 }

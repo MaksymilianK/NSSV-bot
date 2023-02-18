@@ -81,11 +81,17 @@ public class AppManager {
             case DIGGER_JOIN:
                 onJoin((DiggerJoinCommand) command);
                 break;
+            case GATE_JOIN:
+                onJoin((GateJoinCommand) command);
+                break;
             case FENCE_JOIN:
                 onJoin((FenceJoinCommand) command);
                 break;
             case SAND_JOIN:
                 onJoin((SandJoinCommand) command);
+                break;
+            case CACTUS_JOIN:
+                onJoin((CactusJoinCommand) command);
                 break;
             case TEST_JOIN:
                 onJoin((TestJoinCommand) command);

@@ -12,25 +12,25 @@ import pl.konradmaksymilian.nssvbot.utils.Timer;
 import java.time.Duration;
 import java.util.Arrays;
 
-public class FenceBuilderSession extends MovableSession {
+public class CactusBuilderSession extends MovableSession {
 
-    private final int FIRST_X = 28402;
+    private final int FIRST_X = 28401;
     private final int FIRST_Z = -5566;
-    private final int LAST_X = 28556;
+    private final int LAST_X = 28555;
     private final int LAST_Z = -5410;
 
     private final int CHEST_X = 28473;
     private final int CHEST_Y = 1;
-    private final int CHEST_Z = -5486;
+    private final int CHEST_Z = -5485;
 
-    private FenceBuilderStatus builderStatus = FenceBuilderStatus.DISABLED;
+    private CactusBuilderStatus builderStatus = CactusBuilderStatus.DISABLED;
     private int currentX;
     private int currentZ;
 
     private final Slot[] inventory = new Slot[36];
     private int actionCounter = 1;
 
-    public FenceBuilderSession(ConnectionManager connection, Timer timer) {
+    public CactusBuilderSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
         for (int i = 0; i < 36; i++) {
             inventory[i] = new Slot(new byte[]{});
@@ -54,22 +54,22 @@ public class FenceBuilderSession extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(FenceBuilderStatus.DISABLED) || packet.getStateID() == 0) {
+        if (builderStatus.equals(CactusBuilderStatus.DISABLED) || packet.getStateID() == 0) {
             return;
         }
 
-        if (builderStatus.equals(FenceBuilderStatus.BUILDING_FENCE) && // || builderStatus.equals(FenceBuilderStatus.MOVING_FENCES)) &&
-                packet.getPosition().getY() == (int) feetY + 2 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
+        if (builderStatus.equals(CactusBuilderStatus.BUILDING_CACTUS) && // || builderStatus.equals(CactusBuilderStatus.MOVING_CACTUSS)) &&
+                packet.getPosition().getY() == (int) feetY && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
 //            cancelledX.add(packet.getPosition().getX());
 //            cancelledZ.add(packet.getPosition().getZ());
             System.out.println("block change " + packet.getStateID());
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-            nextFence();
-            moveToFence();
+            nextCactus();
+            moveToCactus();
 //            counter++;
 //            if (counter == 2) {
-//                nextFence();
-//                moveToFence();
+//                nextCactus();
+//                moveToCactus();
 //                counter = 0;
 //            }
         }
@@ -80,11 +80,11 @@ public class FenceBuilderSession extends MovableSession {
         super.onChatMessage(packet);
         String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
 
-        if (builderStatus.equals(FenceBuilderStatus.BUYING)) {
+        if (builderStatus.equals(CactusBuilderStatus.BUYING)) {
             if (message.endsWith("wysprzedany.")) {
-                changeFenceBuilderStatus(FenceBuilderStatus.TP_TO_WORK);
+                changeCactusBuilderStatus(CactusBuilderStatus.TP_TO_WORK);
             } else if (message.contains("w ekwipunku.")) {
-                changeFenceBuilderStatus(FenceBuilderStatus.TP_TO_WORK);
+                changeCactusBuilderStatus(CactusBuilderStatus.TP_TO_WORK);
             }
         }
 
@@ -95,9 +95,9 @@ public class FenceBuilderSession extends MovableSession {
         if (message.endsWith("--start--")) {
             int[] coords = extractCoords(message);
             if (coords.length > 0) {
-                startBuildingFence(coords[0], coords[1]);
+                startBuildingCactus(coords[0], coords[1]);
             } else {
-                startBuildingFence();
+                startBuildingCactus();
             }
         } else if (message.endsWith("--stop--")) {
             stop();
@@ -123,12 +123,11 @@ public class FenceBuilderSession extends MovableSession {
         }
         if (packet.getWindowId() == 0 && packet.getSlot() > 8) {
             inventory[packet.getSlot() - 9].setData(packet.getSlotData());
-            System.out.println(Arrays.toString(inventory[packet.getSlot() - 9].getData()));
 //            if (packet.getSlot() == 36) {
 //                counter++;
 //                if (counter == 2) {
-//                    nextFence();
-//                    moveToFence();
+//                    nextCactus();
+//                    moveToCactus();
 //                    counter = 0;
 //                }
 //            }
@@ -143,9 +142,9 @@ public class FenceBuilderSession extends MovableSession {
         for (int i = 9; i < 45; i++) {
             inventory[i - 9].setData(packet.getSlotData()[i]);
             System.out.println(inventory[i - 9].getCount());
-            if (builderStatus.equals(FenceBuilderStatus.BUILDING_FENCE) && inventory[27].getCount() == 0) {
+            if (builderStatus.equals(CactusBuilderStatus.BUILDING_CACTUS) && inventory[27].getCount() == 0) {
                 System.out.println("empty!!!!!!!!!!!!");
-                // changeFenceBuilderStatus(FenceBuilderStatus.MOVING_FENCES);
+                // changeCactusBuilderStatus(CactusBuilderStatus.MOVING_CACTUSS);
             }
         }
     }
@@ -157,14 +156,14 @@ public class FenceBuilderSession extends MovableSession {
             return;
         }
 
-        if (builderStatus.equals(FenceBuilderStatus.TP_TO_CHESTS)) {
+        if (builderStatus.equals(CactusBuilderStatus.TP_TO_CHESTS)) {
             //cancelledX.add(currentX);
             //cancelledZ.add(currentZ);
             moveToChest();
-        } else if (builderStatus.equals(FenceBuilderStatus.TP_TO_WORK)) {
+        } else if (builderStatus.equals(CactusBuilderStatus.TP_TO_WORK)) {
             //currentX = cancelledX.poll();
             //currentZ = cancelledZ.poll();
-            moveToFence();
+            moveToCactus();
         }
     }
 
@@ -172,39 +171,39 @@ public class FenceBuilderSession extends MovableSession {
     protected void onEveryCheck() {
         super.onEveryCheck();
 
-        if (builderStatus.equals(FenceBuilderStatus.DISABLED)) {
+        if (builderStatus.equals(CactusBuilderStatus.DISABLED)) {
             return;
         }
 
-        if (builderStatus.equals(FenceBuilderStatus.MOVING_FENCE) && !isMoving()) {
-            changeFenceBuilderStatus(FenceBuilderStatus.BUILDING_FENCE);
-        } else if (builderStatus.equals(FenceBuilderStatus.MOVING_CHEST) && !isMoving()) {
-            changeFenceBuilderStatus(FenceBuilderStatus.BUYING);
-        } else if (builderStatus.equals(FenceBuilderStatus.BUYING)) {
+        if (builderStatus.equals(CactusBuilderStatus.MOVING_CACTUS) && !isMoving()) {
+            changeCactusBuilderStatus(CactusBuilderStatus.BUILDING_CACTUS);
+        } else if (builderStatus.equals(CactusBuilderStatus.MOVING_CHEST) && !isMoving()) {
+            changeCactusBuilderStatus(CactusBuilderStatus.BUYING);
+        } else if (builderStatus.equals(CactusBuilderStatus.BUYING)) {
             buy();
-        } else if (builderStatus.equals(FenceBuilderStatus.BUILDING_FENCE)) {
+        } else if (builderStatus.equals(CactusBuilderStatus.BUILDING_CACTUS)) {
             if (timer.isNowAfter("checkHand")) {
                 timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-                placeFence();
+                placeCactus();
             }
         }
     }
 
-    private void onChangeFenceBuilderStatus() {
-        if (builderStatus.equals(FenceBuilderStatus.BUILDING_FENCE)) {
-            placeFence();
-        } else if (builderStatus.equals(FenceBuilderStatus.TP_TO_CHESTS)) {
+    private void onChangeCactusBuilderStatus() {
+        if (builderStatus.equals(CactusBuilderStatus.BUILDING_CACTUS)) {
+            placeCactus();
+        } else if (builderStatus.equals(CactusBuilderStatus.TP_TO_CHESTS)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
             connection.sendPacket(new ChatMessageServerboundPacket("/p visit GeniuszMistrz 2"));
             System.out.println("sethome");
-        } else if (builderStatus.equals(FenceBuilderStatus.TP_TO_WORK)) {
+        } else if (builderStatus.equals(CactusBuilderStatus.TP_TO_WORK)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/home"));
         }
     }
 
-    private void changeFenceBuilderStatus(FenceBuilderStatus builderStatus) {
+    private void changeCactusBuilderStatus(CactusBuilderStatus builderStatus) {
         this.builderStatus = builderStatus;
-        onChangeFenceBuilderStatus();
+        onChangeCactusBuilderStatus();
     }
 
     private void buy() {
@@ -227,88 +226,106 @@ public class FenceBuilderSession extends MovableSession {
     }
 
     private void moveToChest() {
-        changeFenceBuilderStatus(FenceBuilderStatus.MOVING_CHEST);
+        changeCactusBuilderStatus(CactusBuilderStatus.MOVING_CHEST);
         setNewDestination(x, z, getYaw(x, z, CHEST_X, CHEST_Z), getPitch(x, z, CHEST_X, CHEST_Y, CHEST_Z));
     }
 
-    private void startBuildingFence() {
-        startBuildingFence(FIRST_X, FIRST_Z);
+    private void startBuildingCactus() {
+        startBuildingCactus(FIRST_X, FIRST_Z);
     }
 
-    private void startBuildingFence(int firstX, int firstZ) {
+    private void startBuildingCactus(int firstX, int firstZ) {
         currentX = firstX;
         currentZ = firstZ;
-        moveToFence();
+        moveToCactus();
     }
 
-    private void moveToFence() {
-        changeFenceBuilderStatus(FenceBuilderStatus.MOVING_FENCE);
+    private void moveToCactus() {
+        changeCactusBuilderStatus(CactusBuilderStatus.MOVING_CACTUS);
         double newX, newZ;
         float newYaw, newPitch;
 
-        if (currentZ == FIRST_Z) {
-            newX = currentX + 0.5d;
-            newZ = currentZ + 3.5d;
-            newYaw = 169.5f;
-            newPitch = -16.1f;
-        } else if (currentZ == LAST_Z) {
-            newX = currentX + 0.5d;
-            newZ = currentZ - 0.5d;
-            newYaw = 32.5f;
-            newPitch = -36.8f;
+        if (isCactusOdd()) {
+            if (currentZ == FIRST_Z) {
+                newX = currentX - 0.5d;
+                newZ = currentZ + 3.5d;
+                newYaw = -161.5f;
+                newPitch = 11.7f;
+            } else if (currentZ == LAST_Z) {
+                newX = currentX - 0.5d;
+                newZ = currentZ - 0.5d;
+                newYaw = -43.5f;
+                newPitch = 25.0f;
+            } else {
+                newX = currentX - 0.5d;
+                newZ = currentZ + 1.5d;
+                newYaw = -135.9f;
+                newPitch = 24.4f;
+            }
         } else {
-            newX = currentX + 0.5d;
-            newZ = currentZ + 1.5d;
-            newYaw = 151.5f;
-            newPitch = -36.8f;
+            if (currentZ == FIRST_Z) {
+                newX = currentX + 1.5d;
+                newZ = currentZ + 3.5d;
+                newYaw = 161.5f;
+                newPitch = 11.7f;
+            } else if (currentZ == LAST_Z) {
+                newX = currentX + 1.5d;
+                newZ = currentZ - 0.5d;
+                newYaw = 43.8f;
+                newPitch = 25.0f;
+            } else {
+                newX = currentX + 1.5d;
+                newZ = currentZ + 1.5d;
+                newYaw = 135.9f;
+                newPitch = 24.4f;
+            }
         }
-
         setNewDestination(newX, newZ, newYaw, newPitch);
         System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
     }
 
-    private void placeFence() {
+    private void placeCactus() {
         int eq = checkEq();
 
         if (eq == -1) {
-            changeFenceBuilderStatus(FenceBuilderStatus.TP_TO_CHESTS);
+            changeCactusBuilderStatus(CactusBuilderStatus.TP_TO_CHESTS);
             return;
         } else if (eq == 0) {
-            changeFenceBuilderStatus(FenceBuilderStatus.MOVING_FENCE);
+            changeCactusBuilderStatus(CactusBuilderStatus.MOVING_CACTUS);
             return;
         } else {
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
         }
 
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
-                .x(currentX - 1)
-                .y((int) feetY + 2)
+                .x(currentX)
+                .y((int) feetY)
                 .z(currentZ)
-                .face(5)
+                .face(1)
                 .hand(0)
-                .cursorX(1.0f)
-                .cursorY(0.5f)
+                .cursorX(0.5f)
+                .cursorY(1.0f)
                 .cursorZ(0.5f)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
     }
 
-    private void nextFence() {
-        if ((currentZ == LAST_Z && !isFenceOdd()) || (currentZ == FIRST_Z && isFenceOdd())) {
-            currentX += 4;
-        } else if (!isFenceOdd()) {
+    private void nextCactus() {
+        if ((currentZ == LAST_Z && !isCactusOdd()) || (currentZ == FIRST_Z && isCactusOdd())) {
+            currentX += 2;
+        } else if (!isCactusOdd()) {
             currentZ += 2;
         } else {
             currentZ -= 2;
         }
 
         if (currentX > LAST_X) {
-            changeFenceBuilderStatus(FenceBuilderStatus.DISABLED);
+            changeCactusBuilderStatus(CactusBuilderStatus.DISABLED);
         }
     }
 
-    private boolean isFenceOdd() {
-        return currentX % 8 == 6;
+    private boolean isCactusOdd() {
+        return currentX % 4 == 3;
     }
 
     private int checkEq() {
@@ -316,12 +333,6 @@ public class FenceBuilderSession extends MovableSession {
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
-                    if (inventory[i].getData()[1] != 85) {
-                        connection.sendPacket(new ClickWindowPacket(
-                                0, i + 9, 1, actionCounter, 4, new byte[]{(byte) 255, (byte) 255}
-                        ));
-                        System.out.println("throw");
-                    }
                     System.out.println(" non empty " + Arrays.toString(inventory[i].getData()));
                     connection.sendPacket(new ClickWindowPacket(
                             0, i + 9, 0, actionCounter, 0, inventory[i].getData()
@@ -333,7 +344,7 @@ public class FenceBuilderSession extends MovableSession {
                         throw new RuntimeException(e);
                     }
                     connection.sendPacket(new ClickWindowPacket(
-                            0, 36, 0, actionCounter, 0, new byte[]{(byte) 255, (byte) 255}
+                            0, 36, 0, actionCounter, 0, inventory[i].getData()
                     ));
                     connection.sendPacket(new CloseWindowPacket(0));
                     actionCounter++;
@@ -350,7 +361,7 @@ public class FenceBuilderSession extends MovableSession {
     }
 
     private void stop() {
-        changeFenceBuilderStatus(FenceBuilderStatus.DISABLED);
+        changeCactusBuilderStatus(CactusBuilderStatus.DISABLED);
         move = null;
     }
 

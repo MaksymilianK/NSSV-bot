@@ -194,13 +194,17 @@ public class SessionsManager {
             session = sessionFactory.createDealer();
         } else if (commandName.equals(CommandName.SLAB_JOIN)) {
             session = sessionFactory.createSlab();
+        } else if (commandName.equals(CommandName.CACTUS_JOIN)) {
+            session = sessionFactory.createCactus();
         } else if (commandName.equals(CommandName.SAND_JOIN)) {
             session = sessionFactory.createSand();
         } else if (commandName.equals(CommandName.DIGGER_JOIN)) {
             session = sessionFactory.createDigger();
-        }  else if (commandName.equals(CommandName.FENCE_JOIN)) {
+        } else if (commandName.equals(CommandName.GATE_JOIN)) {
+            session = sessionFactory.createGate();
+        } else if (commandName.equals(CommandName.FENCE_JOIN)) {
             session = sessionFactory.createFence();
-        }else {
+        } else {
             throw new SessionException("Cannot recognise type of session to create: '" + commandName + "'");
         }
 

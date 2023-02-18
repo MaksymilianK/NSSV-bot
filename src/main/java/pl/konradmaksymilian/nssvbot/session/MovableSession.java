@@ -18,7 +18,6 @@ public abstract class MovableSession extends Session {
     public static final double MAX_LOOK = 25.0d;
 
     protected HorizontalMove move;
-    double speed = 0.75d;
 
     public MovableSession(ConnectionManager connection, Timer timer) {
         super(connection, timer);
@@ -196,23 +195,16 @@ public abstract class MovableSession extends Session {
     }
 
     private void changePosition() {
-        if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove() * speed)) {
-            x += move.getXMove() * speed;
+        if (Math.abs(move.getDestinationX() - x) > Math.abs(move.getXMove())) {
+            x += move.getXMove();
         } else {
             x = move.getDestinationX();
         }
 
-        if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove() * speed)) {
-            z += move.getZMove() * speed;
+        if (Math.abs(move.getDestinationZ() - z) > Math.abs(move.getZMove())) {
+            z += move.getZMove();
         } else {
             z = move.getDestinationZ();
-        }
-
-        if (speed < 1.0d) {
-            speed += 0.6;
-        }
-        if (speed > 1.0d) {
-            speed = 1.0d;
         }
     }
 

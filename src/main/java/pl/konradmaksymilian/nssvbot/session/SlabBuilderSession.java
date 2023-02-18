@@ -298,8 +298,8 @@ public class SlabBuilderSession extends MovableSession {
                 newYaw = -130.0f;
                 newPitch = 55.0f;
             } else {
-                newX = (double) currentX + 0.5d;
-                newZ = (double) currentZ + 0.75d;
+                newX = currentX + 0.5d;
+                newZ = currentZ + 0.8d;
                 newYaw = 0.1f;
                 newPitch = 82.2f;
             }
@@ -310,14 +310,14 @@ public class SlabBuilderSession extends MovableSession {
                 newYaw = -52.4f;
                 newPitch = 55.0f;
             } else {
-                newX = (double) currentX + 0.5d;
-                newZ = (double) currentZ + 0.25d;
+                newX = currentX + 0.5d;
+                newZ = currentZ + 0.2d;
                 newYaw = 179.9f;
                 newPitch = 82.2f;
             }
         }
         setNewDestination(newX, newZ, newYaw, newPitch);
-        System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
+        System.out.println("current " + currentX + " " + currentZ + " " + newZ);
     }
 
     private void placeSlab() {
