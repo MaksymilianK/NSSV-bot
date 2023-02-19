@@ -333,6 +333,12 @@ public class CactusBuilderSession extends MovableSession {
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
+                    if (inventory[i].getData()[1] != 81) {
+                        connection.sendPacket(new ClickWindowPacket(
+                                0, i + 9, 1, actionCounter, 4, new byte[]{(byte) 255, (byte) 255}
+                        ));
+                        System.out.println("throw");
+                    }
                     System.out.println(" non empty " + Arrays.toString(inventory[i].getData()));
                     connection.sendPacket(new ClickWindowPacket(
                             0, i + 9, 0, actionCounter, 0, inventory[i].getData()

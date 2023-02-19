@@ -313,7 +313,7 @@ public class FenceBuilderSession extends MovableSession {
 
     private int checkEq() {
         System.out.println("eq");
-        if (!inventory[27].isPresent()) {
+        if (!inventory[27].isPresent() || inventory[27].getData()[1] != 85) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
                     if (inventory[i].getData()[1] != 85) {
