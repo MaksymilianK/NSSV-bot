@@ -9,9 +9,6 @@ import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
 import pl.konradmaksymilian.nssvbot.utils.ChatFormatter;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 
-import java.time.Duration;
-import java.util.Arrays;
-
 public class HoleDiggerSession extends MovableSession {
 
     private final int FIRST_X = 28400;
@@ -19,7 +16,7 @@ public class HoleDiggerSession extends MovableSession {
     private final int LAST_X = 28558;
     private final int LAST_Z = -5409;
 
-    private HoleDiggerStatus diggerStatus = HoleDiggerStatus.DISABLED;
+    private DiggerStatus diggerStatus = DiggerStatus.DISABLED;
     private int currentX;
     private int currentZ;
 
@@ -42,11 +39,11 @@ public class HoleDiggerSession extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (diggerStatus.equals(HoleDiggerStatus.DISABLED) || packet.getStateID() != 0) {
+        if (diggerStatus.equals(DiggerStatus.DISABLED) || packet.getStateID() != 0) {
             return;
         }
 
-        if (diggerStatus.equals(HoleDiggerStatus.DIGGING) &&
+        if (diggerStatus.equals(DiggerStatus.DIGGING) &&
                 packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
 //            cancelledX.add(packet.getPosition().getX());
 //            cancelledZ.add(packet.getPosition().getZ());
@@ -78,7 +75,7 @@ public class HoleDiggerSession extends MovableSession {
                 startDiggingHoles();
             }
         } else if (message.endsWith("--stop--")) {
-            changeDiggerStatus(HoleDiggerStatus.DISABLED);
+            changeDiggerStatus(DiggerStatus.DISABLED);
         } else if (message.endsWith("--throw--")) {
             throwItem();
         } else if (message.endsWith("--tpa--")) {
@@ -96,13 +93,13 @@ public class HoleDiggerSession extends MovableSession {
     @Override
     protected void onEveryCheck() {
         super.onEveryCheck();
-        if (!status.equals(Status.GAME) || diggerStatus.equals(HoleDiggerStatus.DISABLED)) {
+        if (!status.equals(Status.GAME) || diggerStatus.equals(DiggerStatus.DISABLED)) {
             return;
         }
 
-        if (diggerStatus.equals(HoleDiggerStatus.MOVING) && !isMoving()) {
-            changeDiggerStatus(HoleDiggerStatus.DIGGING);
-        } else if (diggerStatus.equals(HoleDiggerStatus.DIGGING)) {
+        if (diggerStatus.equals(DiggerStatus.MOVING) && !isMoving()) {
+            changeDiggerStatus(DiggerStatus.DIGGING);
+        } else if (diggerStatus.equals(DiggerStatus.DIGGING)) {
             tickCounter++;
             if (tickCounter == 2) {
                 finishDigHole();
@@ -114,14 +111,14 @@ public class HoleDiggerSession extends MovableSession {
     }
 
     private void onChangeDiggerStatus() {
-        if (diggerStatus.equals(HoleDiggerStatus.DIGGING)) {
+        if (diggerStatus.equals(DiggerStatus.DIGGING)) {
             startDigHole();
-        } else if (diggerStatus.equals(HoleDiggerStatus.DISABLED)) {
+        } else if (diggerStatus.equals(DiggerStatus.DISABLED)) {
             stop();
         }
     }
 
-    private void changeDiggerStatus(HoleDiggerStatus diggerStatus) {
+    private void changeDiggerStatus(DiggerStatus diggerStatus) {
         this.diggerStatus = diggerStatus;
         onChangeDiggerStatus();
     }
@@ -137,7 +134,7 @@ public class HoleDiggerSession extends MovableSession {
     }
 
     private void moveToHole() {
-        changeDiggerStatus(HoleDiggerStatus.MOVING);
+        changeDiggerStatus(DiggerStatus.MOVING);
         double newX, newZ;
         float newYaw, newPitch;
 
@@ -218,7 +215,7 @@ public class HoleDiggerSession extends MovableSession {
         }
 
         if (currentX > LAST_X) {
-            changeDiggerStatus(HoleDiggerStatus.DISABLED);
+            changeDiggerStatus(DiggerStatus.DISABLED);
         }
     }
 

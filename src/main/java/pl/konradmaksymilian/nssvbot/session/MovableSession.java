@@ -12,6 +12,9 @@ import pl.konradmaksymilian.nssvbot.utils.Timer;
 import java.time.Duration;
 import java.util.Random;
 
+import static java.lang.Math.PI;
+import static java.lang.Math.atan2;
+
 public abstract class MovableSession extends Session {
 
     public static final double MAX_MOVE = 0.18d;
@@ -77,19 +80,9 @@ public abstract class MovableSession extends Session {
 
     @Override
     protected void onPlayerPositionAndLook(PlayerPositionAndLookClientboundPacket packet) {
-        //super.onPlayerPositionAndLook(packet);
-
+        super.onPlayerPositionAndLook(packet);
         if (!status.equals(Status.GAME)) {
             return;
-        }
-
-        x = packet.getX();
-        feetY = (int) packet.getFeetY();
-        z = packet.getZ();
-
-        if (packet.getFlags() == (byte) 0) {
-            yaw = packet.getYaw();
-            pitch = packet.getPitch();
         }
 
         if (packet.getFlags() == (byte) 0) {
@@ -114,9 +107,8 @@ public abstract class MovableSession extends Session {
                     .build()
             );
         }
-        connection.sendPacket(new TeleportConfirmPacket(packet.getTeleportId()));
 
-        timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(5));
+        timer.setTimeFromNow("nextPossibleMove", Duration.ofSeconds(2));
         timer.setTimeFromNow("nextUpdate", Duration.ofSeconds(1));
 
         System.out.println("received " + packet.getX() + " " + packet.getFeetY() + " " + packet.getZ() + " " + packet.getYaw() + " " + packet.getPitch());
@@ -124,15 +116,10 @@ public abstract class MovableSession extends Session {
     }
 
     protected float getYaw(double x0, double z0, float x, float z) {
-        double dx = x + 0.5f - x0;
-        double dz = z + 0.5f - z0;
+        double dx = x - x0;
+        double dz = z - z0;
 
-        if (dx < 0) {
-            return (float) ((Math.atan(dz / dx) + Math.PI * 5f / 2f) / Math.PI * 180);
-
-        } else {
-            return (float) ((Math.atan(dz / dx) + Math.PI * 3f / 2f) / Math.PI * 180);
-        }
+        return (float) (-atan2(dx,dz) / PI * 180.0);
     }
 
     protected float getPitch(double x0, double z0, float x, float y, float z) {
@@ -140,7 +127,7 @@ public abstract class MovableSession extends Session {
         double dy = (float) (y + 0.5f - feetY - 1.62f);
         double dz = z + 0.5f - z0;
         float r = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
-        return (float) (-Math.asin(dy/r) / Math.PI * 180);
+        return (float) (-Math.asin(dy/r) / PI * 180);
     }
 
     private void checkMove() {
@@ -177,21 +164,8 @@ public abstract class MovableSession extends Session {
     }
 
     private void changeLook() {
-        if (move.getYaw().get() - yaw > MAX_LOOK) {
-            yaw += (MAX_LOOK);
-        } else if (move.getYaw().get() - yaw < -MAX_LOOK) {
-            yaw -= MAX_LOOK + (MAX_LOOK);
-        } else {
-            yaw = move.getYaw().get();
-        }
-
-        if (move.getPitch().get() - pitch > MAX_LOOK) {
-            pitch += MAX_LOOK + (MAX_LOOK);
-        } else if (move.getPitch().get() - pitch < -MAX_LOOK) {
-            pitch -= MAX_LOOK + (MAX_LOOK);
-        } else {
-            pitch = move.getPitch().get();
-        }
+        yaw = move.getYaw().get();
+        pitch = move.getPitch().get();
     }
 
     private void changePosition() {
@@ -206,10 +180,6 @@ public abstract class MovableSession extends Session {
         } else {
             z = move.getDestinationZ();
         }
-    }
-
-    private double randomMoveNumber() {
-        return (random.nextDouble() * 0.04) - 0.02;
     }
 
     private boolean looksWhereShould() {

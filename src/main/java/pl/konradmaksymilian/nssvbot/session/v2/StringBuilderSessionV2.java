@@ -24,11 +24,13 @@ public class StringBuilderSessionV2 extends MovableSession {
 
     private final int CHEST_X = 28475;
     private final int CHEST_Y = 1;
-    private final int CHEST_Z = -5485;
+    private final int CHEST_Z = -5486;
 
     private BuilderStatusV2 builderStatus = BuilderStatusV2.DISABLED;
     private int currentX;
     private int currentZ;
+    private int nextX;
+    private int nextZ;
 
     private final Slot[] inventory = new Slot[36];
     private int actionCounter = 1;
@@ -57,24 +59,17 @@ public class StringBuilderSessionV2 extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(BuilderStatusV2.DISABLED) || packet.getStateID() == 0) {
+        if (builderStatus.equals(BuilderStatusV2.DISABLED) || packet.getStateID() != 2114) {
             return;
         }
 
-        if (builderStatus.equals(BuilderStatusV2.BUILDING) && // || builderStatus.equals(SandBuilderStatus.MOVING_SANDS)) &&
-                packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
-//            cancelledX.add(packet.getPosition().getX());
-//            cancelledZ.add(packet.getPosition().getZ());
+        if (builderStatus.equals(BuilderStatusV2.BUILDING) &&
+                packet.getPosition().getY() == (int) feetY - 1 && Math.abs(packet.getPosition().getX() - currentX) == 1 && packet.getPosition().getZ() == currentZ) {
             System.out.println("block change " + packet.getStateID());
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-            nextSand();
+
+            next();
             moveToBuild();
-//            counter++;
-//            if (counter == 2) {
-//                nextSand();
-//                moveToSand();
-//                counter = 0;
-//            }
         }
     }
 
@@ -98,9 +93,9 @@ public class StringBuilderSessionV2 extends MovableSession {
         if (message.endsWith("--start--")) {
             int[] coords = extractCoords(message);
             if (coords.length > 0) {
-                startBuildingSand(coords[0], coords[1]);
+                start(coords[0], coords[1]);
             } else {
-                startBuildingSand();
+                start();
             }
         } else if (message.endsWith("--stop--")) {
             stop();
@@ -126,14 +121,6 @@ public class StringBuilderSessionV2 extends MovableSession {
         }
         if (packet.getWindowId() == 0 && packet.getSlot() > 8) {
             inventory[packet.getSlot() - 9].setData(packet.getSlotData());
-//            if (packet.getSlot() == 36) {
-//                counter++;
-//                if (counter == 2) {
-//                    nextSand();
-//                    moveToSand();
-//                    counter = 0;
-//                }
-//            }
         }
         System.out.println("set slot");
     }
@@ -147,7 +134,6 @@ public class StringBuilderSessionV2 extends MovableSession {
             System.out.println(inventory[i - 9].getCount());
             if (builderStatus.equals(BuilderStatusV2.BUILDING) && inventory[27].getCount() == 0) {
                 System.out.println("empty!!!!!!!!!!!!");
-                // changeSandBuilderStatus(SandBuilderStatus.MOVING_SANDS);
             }
         }
     }
@@ -160,12 +146,8 @@ public class StringBuilderSessionV2 extends MovableSession {
         }
 
         if (builderStatus.equals(BuilderStatusV2.TP_TO_CHESTS)) {
-            //cancelledX.add(currentX);
-            //cancelledZ.add(currentZ);
             moveToChest();
         } else if (builderStatus.equals(BuilderStatusV2.TP_TO_WORK)) {
-            //currentX = cancelledX.poll();
-            //currentZ = cancelledZ.poll();
             moveToBuild();
         }
     }
@@ -178,7 +160,7 @@ public class StringBuilderSessionV2 extends MovableSession {
             return;
         }
 
-        if (builderStatus.equals(BuilderStatusV2.MOVING) && !isMoving()) {
+        if (builderStatus.equals(BuilderStatusV2.MOVING) && !isMoving() && timer.isNowAfter("nextPossibleMove")) {
             changeBuilderStatus(BuilderStatusV2.BUILDING);
         } else if (builderStatus.equals(BuilderStatusV2.MOVING_CHEST) && !isMoving()) {
             changeBuilderStatus(BuilderStatusV2.BUYING);
@@ -187,14 +169,14 @@ public class StringBuilderSessionV2 extends MovableSession {
         } else if (builderStatus.equals(BuilderStatusV2.BUILDING)) {
             if (timer.isNowAfter("checkHand")) {
                 timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
-                placeSand();
+                place();
             }
         }
     }
 
     private void onChangeSandBuilderStatus() {
         if (builderStatus.equals(BuilderStatusV2.BUILDING)) {
-            placeSand();
+            place();
         } else if (builderStatus.equals(BuilderStatusV2.TP_TO_CHESTS)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
             connection.sendPacket(new ChatMessageServerboundPacket("/p visit GeniuszMistrz 2"));
@@ -233,86 +215,126 @@ public class StringBuilderSessionV2 extends MovableSession {
         setNewDestination(x, z, getYaw(x, z, CHEST_X, CHEST_Z), getPitch(x, z, CHEST_X, CHEST_Y, CHEST_Z));
     }
 
-    private void startBuildingSand() {
-        startBuildingSand(FIRST_X, FIRST_Z);
+    private void start() {
+        start(FIRST_X, FIRST_Z);
     }
 
-    private void startBuildingSand(int firstX, int firstZ) {
-        currentX = firstX;
-        currentZ = firstZ;
+    private void start(int firstX, int firstZ) {
+        nextX = firstX;
+        nextZ = firstZ;
+        next();
         moveToBuild();
     }
 
     private void moveToBuild() {
         changeBuilderStatus(BuilderStatusV2.MOVING);
-        double newX, newZ;
-        float newYaw, newPitch;
-
-        if (isSandOdd()) {
-            if (currentZ == FIRST_Z) {
-                newX = currentX + 1.5d;
-                newZ = currentZ + 0.5d;
-                newYaw = 90.0f;
-                newPitch = 57.0f;
-            } else {
-                newX = currentX + 0.5d;
-                newZ = currentZ - 0.5d;
-                newYaw = 0.1f;
-                newPitch = 57.1f;
-            }
-        } else {
-            if (currentZ == LAST_Z) {
-                newX = currentX + 1.5d;
-                newZ = currentZ + 0.5d;
-                newYaw = 90.0f;
-                newPitch = 56.9f;
-            } else {
-                newX = currentX + 0.5d;
-                newZ = currentZ + 1.5d;
-                newYaw = -179.9f;
-                newPitch = 57.2f;
-            }
+        if (isOdd() && currentZ == LAST_Z) {
+            setNewDestination(
+                    currentX + 0.5,
+                    currentZ + 0.5,
+                    getYaw(currentX + 0.5, currentZ + 0.5, currentX - 0.5f, (float) currentZ),
+                    getPitch(currentX + 0.5, currentZ + 0.5, currentX - 0.5f , (float) feetY + 0.5f, (float) currentZ)
+            );
+            return;
+        } else if (!isOdd() && currentZ == FIRST_Z) {
+            setNewDestination(
+                    currentX + 2.5,
+                    currentZ + 2.5,
+                    getYaw(currentX + 2.5, currentZ + 2.5, currentX + 1.0f, (float) currentZ + 0.5f),
+                    getPitch(currentX + 2.5, currentZ + 2.5, currentX + 1.0f , (float) feetY + 0.5f, (float) currentZ + 0.5f)
+            );
+            return;
         }
-        setNewDestination(newX, newZ, newYaw, newPitch);
-        System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
+
+        boolean isWest = currentX % 2 != 0;
+        setNewDestination(
+                nextX + 0.5,
+                nextZ + 0.5,
+                getYaw(nextX + 0.5, nextZ + 0.5, isWest ? (float) currentX : (float) currentX + 1.0f, (float) currentZ + 0.5f),
+                getPitch(nextX + 0.5, nextZ + 0.5, isWest ? (float) currentX : (float) currentX + 1.0f, (float) feetY + 0.5f, (float) currentZ + 0.5f)
+        );
+        System.out.println("current " + currentX + " " + currentZ + " " + getYaw(nextX + 0.5, nextZ + 0.5, isWest ? (float) currentX : (float) currentX + 1.0f, (float) currentZ + 0.5f) + " " + getPitch(nextX + 0.5, nextZ + 0.5, isWest ? (float) currentX : (float) currentX + 1.0f, (float) feetY - 0.5f, (float) currentZ + 0.5f));
     }
 
-    private void placeSand() {
+    private void place() {
         int eq = checkEq();
 
         if (eq == -1) {
             changeBuilderStatus(BuilderStatusV2.TP_TO_CHESTS);
             return;
         } else if (eq == 0) {
-            changeBuilderStatus(BuilderStatusV2.MOVING_SAND);
+            changeBuilderStatus(BuilderStatusV2.MOVING);
             return;
         } else {
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
         }
 
+        if (isOdd() && currentZ == LAST_Z) {
+            connection.sendPacket(PlayerBlockPlacementPacket.builder()
+                    .x(currentX - 1)
+                    .y((int) feetY - 1)
+                    .z(currentZ - 1)
+                    .face(3)
+                    .hand(0)
+                    .cursorX(0.5f)
+                    .cursorY(0.5f)
+                    .cursorZ(1.0f)
+                    .build());
+            connection.sendPacket(new AnimationPacket(0));
+            return;
+        } else if (!isOdd() && currentZ == FIRST_Z) {
+            connection.sendPacket(PlayerBlockPlacementPacket.builder()
+                    .x(currentX)
+                    .y((int) feetY - 1)
+                    .z(currentZ)
+                    .face(5)
+                    .hand(0)
+                    .cursorX(1.0f)
+                    .cursorY(0.5f)
+                    .cursorZ(0.5f)
+                    .build());
+            connection.sendPacket(new AnimationPacket(0));
+            return;
+        }
+
+        boolean isWest = currentX % 2 != 0;
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
                 .x(currentX)
                 .y((int) feetY - 1)
                 .z(currentZ)
-                .face(1)
+                .face(isWest ? 4 : 5)
                 .hand(0)
-                .cursorX(0.5f)
-                .cursorY(1.0f)
+                .cursorX(isWest ? 0.0f : 1.0f)
+                .cursorY(0.5f)
                 .cursorZ(0.5f)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
+        System.out.println("place " + currentX + " " + ((int) feetY - 1) + " " + currentZ + " " + (isWest ? 0.0f : 1.0f));
     }
 
     private void next() {
-        if ((currentZ == LAST_Z && !isSandOdd()) || (currentZ == FIRST_Z && isSandOdd())) {
-            currentX += 2;
-        } else if (!isSandOdd()) {
-            currentZ += 2;
+        currentX = nextX;
+        currentZ = nextZ;
+
+        if ((nextZ == LAST_Z && isOdd()) || (nextZ == FIRST_Z && !isOdd())) {
+           nextX += 2;
+        } else if (isOdd()) {
+            if (nextX % 2 == 1) {
+                nextX--;
+            } else {
+                nextX++;
+            }
+            nextZ++;
         } else {
-            currentZ -= 2;
+            if (nextX % 2 == 0) {
+                nextX++;
+            } else {
+                nextX--;
+            }
+            nextZ--;
         }
 
-        if (currentX > LAST_X) {
+        if (nextX > LAST_X) {
             changeBuilderStatus(BuilderStatusV2.DISABLED);
         }
     }
@@ -326,22 +348,17 @@ public class StringBuilderSessionV2 extends MovableSession {
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
-                    if (inventory[i].getData()[0] != 1 || inventory[i].getData()[1] != 31) {
-                        connection.sendPacket(new ClickWindowPacket(
-                                0, i + 9, 1, actionCounter, 4, new byte[]{(byte) 255, (byte) 255}
-                        ));
-                        System.out.println("throw");
-                    }
+//                    if (inventory[i].getData()[1] != 5) {
+//                        connection.sendPacket(new ClickWindowPacket(
+//                                0, i + 9, 1, actionCounter, 4, new byte[]{(byte) 255, (byte) 255}
+//                        ));
+//                        System.out.println("throw");
+//                    }
                     System.out.println(" non empty " + Arrays.toString(inventory[i].getData()));
                     connection.sendPacket(new ClickWindowPacket(
                             0, i + 9, 0, actionCounter, 0, inventory[i].getData()
                     ));
                     actionCounter++;
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
                     connection.sendPacket(new ClickWindowPacket(
                             0, 36, 0, actionCounter, 0, inventory[i].getData()
                     ));
@@ -352,7 +369,7 @@ public class StringBuilderSessionV2 extends MovableSession {
                     System.out.println(" empty " + Arrays.toString(inventory[i].getData()));
                 }
             }
-            System.out.println("Skonczyl sie piasek :(");
+            System.out.println("Skonczyly sie nici :(");
             return -1;
         } else {
             return 1;

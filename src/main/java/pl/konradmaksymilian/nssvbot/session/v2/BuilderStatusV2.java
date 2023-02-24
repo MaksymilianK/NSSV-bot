@@ -7,5 +7,5 @@ public enum BuilderStatusV2 {
     TP_TO_CHESTS,
     MOVING_CHEST,
     BUYING,
-    TP_TO_WORK
+    MOVING_TP, TP_TO_WORK
 }

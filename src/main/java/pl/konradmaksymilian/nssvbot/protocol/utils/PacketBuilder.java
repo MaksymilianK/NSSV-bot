@@ -1,9 +1,16 @@
 package pl.konradmaksymilian.nssvbot.protocol.utils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
+import me.nullicorn.nedit.NBTInputStream;
+import me.nullicorn.nedit.NBTReader;
+import me.nullicorn.nedit.NBTWriter;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.HeldItemChangeServerboundPacket;
@@ -93,25 +100,54 @@ public class PacketBuilder {
         return new BlockChangePacket(PositionConverter.read(in), VarIntLongConverter.readVarInt(in).getValue());
     }
 
+    private void readNbt(DataInputStream in, List<Byte> bytes) throws IOException {
+        byte one = in.readByte();
+        byte two = in.readByte();
+        bytes.add(one);
+        bytes.add(two);
+    }
+
     public static WindowItemsPacket windowItems(DataInputStream in) throws IOException {
         int windowId = in.readUnsignedByte();
         int len = in.readShort();
         byte[][] slotData = new byte[len][];
+
+        byte[] copy = in.readAllBytes();
+        var inB = new ByteArrayInputStream(copy);
         for (int i = 0; i < slotData.length; i++) {
             var bytes = new ArrayList<Byte>();
-            bytes.add(in.readByte());
-            bytes.add(in.readByte());
+
+            bytes.add(inB.readNBytes(1)[0]);
+            bytes.add(inB.readNBytes(1)[0]);
+
             if (bytes.get(0) != -1 || bytes.get(1) != -1) {
-                bytes.add(in.readByte());
-                bytes.add(in.readByte());
-                bytes.add(in.readByte());
-                bytes.add(in.readByte());
+                bytes.add(inB.readNBytes(1)[0]);
+
+                bytes.add(inB.readNBytes(1)[0]);
+                bytes.add(inB.readNBytes(1)[0]);
+
+                if (copy[5] != 0) {
+                    var inNbt = new NBTInputStream(inB);
+                    var c = inNbt.readFully();
+
+                    var out = new ByteArrayOutputStream();
+                    NBTWriter.write(c, out);
+                    byte[] by = out.toByteArray();
+
+                    for (int j = 0; j < by.length; j++) {
+                        bytes.add(by[j]);
+                    }
+                } else {
+                    bytes.add(inB.readNBytes(1)[0]);
+                }
             }
 
             slotData[i] = new byte[bytes.size()];
             for (int j = 0; j < bytes.size(); j++) {
                 slotData[i][j] = bytes.get(j);
             }
+            copy = inB.readAllBytes();
+            inB = new ByteArrayInputStream(copy);
         }
 
         return new WindowItemsPacket(windowId, slotData);

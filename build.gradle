@@ -20,8 +20,9 @@ repositories {
 
 dependencies {
 	implementation group: 'com.diogonunes', name: 'JCDP', version: '2.0.3.1'
-	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9.3'
-	testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.1'
+	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.7.1'
+    implementation 'me.nullicorn:Nedit:2.2.0'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.1'
 	testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.0.0'
 	testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.13.2'
 	testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.5.1'

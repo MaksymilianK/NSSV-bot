@@ -1,6 +1,6 @@
 package pl.konradmaksymilian.nssvbot.session;
 
-public enum HoleDiggerStatus {
+public enum DiggerStatus {
     MOVING,
     DIGGING,
     DISABLED

@@ -281,8 +281,6 @@ public class SlabBuilderSession extends MovableSession {
     private void startBuildingSlabs(int firstX, int firstZ) {
         currentX = firstX;
         currentZ = firstZ;
-        //cacheX = 0;
-        //cacheZ = 0;
         moveToSlab();
     }
 

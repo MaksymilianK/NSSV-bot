@@ -2,11 +2,13 @@ package pl.konradmaksymilian.nssvbot.session.v2;
 
 import pl.konradmaksymilian.nssvbot.connection.ConnectionManager;
 import pl.konradmaksymilian.nssvbot.protocol.Position;
+import pl.konradmaksymilian.nssvbot.protocol.State;
 import pl.konradmaksymilian.nssvbot.protocol.packet.Packet;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketName;
 import pl.konradmaksymilian.nssvbot.protocol.packet.clientbound.*;
 import pl.konradmaksymilian.nssvbot.protocol.packet.serverbound.*;
 import pl.konradmaksymilian.nssvbot.session.MovableSession;
+import pl.konradmaksymilian.nssvbot.session.SlabBuilderStatus;
 import pl.konradmaksymilian.nssvbot.session.Slot;
 import pl.konradmaksymilian.nssvbot.session.Status;
 import pl.konradmaksymilian.nssvbot.utils.ChatFormatter;
@@ -17,16 +19,16 @@ import java.util.Arrays;
 
 public class SandBuilderSessionV2 extends MovableSession {
 
-    private final int FIRST_X = 28401;
-    private final int FIRST_Z = -5566;
-    private final int LAST_X = 28557;
-    private final int LAST_Z = -5410;
+    private final int FIRST_X = 28736;
+    private final int FIRST_Z = -7776;
+    private final int LAST_X = 28895;
+    private final int LAST_Z = -7617;
 
     private final int CHEST_X = 28475;
     private final int CHEST_Y = 1;
     private final int CHEST_Z = -5485;
 
-    private SandBuilderStatusV2 builderStatus = SandBuilderStatusV2.DISABLED;
+    private BuilderStatusV2 builderStatus = BuilderStatusV2.DISABLED;
     private int currentX;
     private int currentZ;
 
@@ -36,10 +38,16 @@ public class SandBuilderSessionV2 extends MovableSession {
     public SandBuilderSessionV2(ConnectionManager connection, Timer timer) {
         super(connection, timer);
         for (int i = 0; i < 36; i++) {
-            inventory[i] = new Slot(new byte[]{});
+            inventory[i] = new Slot(new byte[] {});
         }
         timer.setTimeToNow("nextPossibleBuy");
         timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
+    }
+
+    @Override
+    protected void onLoginSuccess() {
+        super.onLoginSuccess();
+        builderStatus = BuilderStatusV2.DISABLED;
     }
 
     @Override
@@ -57,24 +65,16 @@ public class SandBuilderSessionV2 extends MovableSession {
     }
 
     private void onBlockChange(BlockChangePacket packet) {
-        if (builderStatus.equals(SandBuilderStatusV2.DISABLED) || packet.getStateID() == 0) {
+        if (builderStatus.equals(BuilderStatusV2.DISABLED) || packet.getStateID() == 0) {
             return;
         }
 
-        if (builderStatus.equals(SandBuilderStatusV2.BUILDING_SAND) && // || builderStatus.equals(SandBuilderStatus.MOVING_SANDS)) &&
+        if (builderStatus.equals(BuilderStatusV2.BUILDING) &&
                 packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
-//            cancelledX.add(packet.getPosition().getX());
-//            cancelledZ.add(packet.getPosition().getZ());
             System.out.println("block change " + packet.getStateID());
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
             nextSand();
             moveToSand();
-//            counter++;
-//            if (counter == 2) {
-//                nextSand();
-//                moveToSand();
-//                counter = 0;
-//            }
         }
     }
 
@@ -83,11 +83,11 @@ public class SandBuilderSessionV2 extends MovableSession {
         super.onChatMessage(packet);
         String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
 
-        if (builderStatus.equals(SandBuilderStatusV2.BUYING)) {
+        if (builderStatus.equals(BuilderStatusV2.BUYING)) {
             if (message.endsWith("wysprzedany.")) {
-                changeSandBuilderStatus(SandBuilderStatusV2.TP_TO_WORK);
+                changeBuilderStatusV2(BuilderStatusV2.TP_TO_WORK);
             } else if (message.contains("w ekwipunku.")) {
-                changeSandBuilderStatus(SandBuilderStatusV2.TP_TO_WORK);
+                changeBuilderStatusV2(BuilderStatusV2.TP_TO_WORK);
             }
         }
 
@@ -98,9 +98,9 @@ public class SandBuilderSessionV2 extends MovableSession {
         if (message.endsWith("--start--")) {
             int[] coords = extractCoords(message);
             if (coords.length > 0) {
-                startBuildingSand(coords[0], coords[1]);
+                startBuildingSands(coords[0], coords[1]);
             } else {
-                startBuildingSand();
+                startBuildingSands();
             }
         } else if (message.endsWith("--stop--")) {
             stop();
@@ -126,14 +126,6 @@ public class SandBuilderSessionV2 extends MovableSession {
         }
         if (packet.getWindowId() == 0 && packet.getSlot() > 8) {
             inventory[packet.getSlot() - 9].setData(packet.getSlotData());
-//            if (packet.getSlot() == 36) {
-//                counter++;
-//                if (counter == 2) {
-//                    nextSand();
-//                    moveToSand();
-//                    counter = 0;
-//                }
-//            }
         }
         System.out.println("set slot");
     }
@@ -145,9 +137,8 @@ public class SandBuilderSessionV2 extends MovableSession {
         for (int i = 9; i < 45; i++) {
             inventory[i - 9].setData(packet.getSlotData()[i]);
             System.out.println(inventory[i - 9].getCount());
-            if (builderStatus.equals(SandBuilderStatusV2.BUILDING_SAND) && inventory[27].getCount() == 0) {
+            if (builderStatus.equals(BuilderStatusV2.BUILDING) && inventory[27].getCount() == 0) {
                 System.out.println("empty!!!!!!!!!!!!");
-                // changeSandBuilderStatus(SandBuilderStatus.MOVING_SANDS);
             }
         }
     }
@@ -159,13 +150,9 @@ public class SandBuilderSessionV2 extends MovableSession {
             return;
         }
 
-        if (builderStatus.equals(SandBuilderStatusV2.TP_TO_CHESTS)) {
-            //cancelledX.add(currentX);
-            //cancelledZ.add(currentZ);
+        if (builderStatus.equals(BuilderStatusV2.TP_TO_CHESTS)) {
             moveToChest();
-        } else if (builderStatus.equals(SandBuilderStatusV2.TP_TO_WORK)) {
-            //currentX = cancelledX.poll();
-            //currentZ = cancelledZ.poll();
+        } else if (builderStatus.equals(BuilderStatusV2.TP_TO_WORK)) {
             moveToSand();
         }
     }
@@ -174,39 +161,53 @@ public class SandBuilderSessionV2 extends MovableSession {
     protected void onEveryCheck() {
         super.onEveryCheck();
 
-        if (builderStatus.equals(SandBuilderStatusV2.DISABLED)) {
+        if (builderStatus.equals(BuilderStatusV2.DISABLED)) {
             return;
         }
 
-        if (builderStatus.equals(SandBuilderStatusV2.MOVING_SAND) && !isMoving()) {
-            changeSandBuilderStatus(SandBuilderStatusV2.BUILDING_SAND);
-        } else if (builderStatus.equals(SandBuilderStatusV2.MOVING_CHEST) && !isMoving()) {
-            changeSandBuilderStatus(SandBuilderStatusV2.BUYING);
-        } else if (builderStatus.equals(SandBuilderStatusV2.BUYING)) {
+        if (builderStatus.equals(BuilderStatusV2.MOVING) && !isMoving() && timer.isNowAfter("nextPossibleMove")) {
+            changeBuilderStatusV2(BuilderStatusV2.BUILDING);
+        } else if (builderStatus.equals(BuilderStatusV2.MOVING_CHEST) && !isMoving()) {
+            changeBuilderStatusV2(BuilderStatusV2.BUYING);
+        } else if (builderStatus.equals(BuilderStatusV2.BUYING)) {
             buy();
-        } else if (builderStatus.equals(SandBuilderStatusV2.BUILDING_SAND)) {
+        } else if (builderStatus.equals(BuilderStatusV2.BUILDING)) {
             if (timer.isNowAfter("checkHand")) {
                 timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
                 placeSand();
             }
+        } else if (builderStatus.equals(BuilderStatusV2.MOVING_TP) && !isMoving()) {
+            changeBuilderStatusV2(BuilderStatusV2.TP_TO_CHESTS);
         }
     }
 
-    private void onChangeSandBuilderStatus() {
-        if (builderStatus.equals(SandBuilderStatusV2.BUILDING_SAND)) {
+    private void onChangeBuilderStatusV2() {
+        if (builderStatus.equals(BuilderStatusV2.BUILDING)) {
             placeSand();
-        } else if (builderStatus.equals(SandBuilderStatusV2.TP_TO_CHESTS)) {
+        } else if (builderStatus.equals(BuilderStatusV2.TP_TO_CHESTS)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/sethome"));
             connection.sendPacket(new ChatMessageServerboundPacket("/p visit GeniuszMistrz 2"));
             System.out.println("sethome");
-        } else if (builderStatus.equals(SandBuilderStatusV2.TP_TO_WORK)) {
+        } else if (builderStatus.equals(BuilderStatusV2.TP_TO_WORK)) {
             connection.sendPacket(new ChatMessageServerboundPacket("/home"));
+        } else if (builderStatus.equals(BuilderStatusV2.MOVING_TP)) {
+            int prevX = currentX;
+            int prevZ = currentZ;
+            if ((currentZ == LAST_Z && !isSandOdd()) || (currentZ == FIRST_Z && isSandOdd())) {
+                prevX = currentX - 1;
+            } else if (!isSandOdd()) {
+                prevZ = currentZ - 1;
+            } else {
+                prevZ = currentZ + 1;
+            }
+
+            setNewDestination(prevX + 0.5, prevZ + 0.5, 80, 90);
         }
     }
 
-    private void changeSandBuilderStatus(SandBuilderStatusV2 builderStatus) {
+    private void changeBuilderStatusV2(BuilderStatusV2 builderStatus) {
         this.builderStatus = builderStatus;
-        onChangeSandBuilderStatus();
+        onChangeBuilderStatusV2();
     }
 
     private void buy() {
@@ -229,96 +230,111 @@ public class SandBuilderSessionV2 extends MovableSession {
     }
 
     private void moveToChest() {
-        changeSandBuilderStatus(SandBuilderStatusV2.MOVING_CHEST);
+        changeBuilderStatusV2(BuilderStatusV2.MOVING_CHEST);
         setNewDestination(x, z, getYaw(x, z, CHEST_X, CHEST_Z), getPitch(x, z, CHEST_X, CHEST_Y, CHEST_Z));
     }
 
-    private void startBuildingSand() {
-        startBuildingSand(FIRST_X, FIRST_Z);
+    private void startBuildingSands() {
+        startBuildingSands(FIRST_X, FIRST_Z);
     }
 
-    private void startBuildingSand(int firstX, int firstZ) {
+    private void startBuildingSands(int firstX, int firstZ) {
         currentX = firstX;
         currentZ = firstZ;
         moveToSand();
     }
 
     private void moveToSand() {
-        changeSandBuilderStatus(SandBuilderStatusV2.MOVING_SAND);
+        changeBuilderStatusV2(BuilderStatusV2.MOVING);
         double newX, newZ;
         float newYaw, newPitch;
 
         if (isSandOdd()) {
-            if (currentZ == FIRST_Z) {
-                newX = currentX + 1.5d;
+            if (currentZ == LAST_Z) {
+                newX = currentX + 0.2d;
                 newZ = currentZ + 0.5d;
-                newYaw = 90.0f;
-                newPitch = 57.0f;
+                newYaw = 89.9f;
+                newPitch = 84.1f;
             } else {
                 newX = currentX + 0.5d;
-                newZ = currentZ - 0.5d;
+                newZ = currentZ + 0.8d;
                 newYaw = 0.1f;
-                newPitch = 57.1f;
+                newPitch = 84.0f;
             }
         } else {
-            if (currentZ == LAST_Z) {
-                newX = currentX + 1.5d;
+            if (currentZ == FIRST_Z) {
+                newX = currentX + 0.2d;
                 newZ = currentZ + 0.5d;
-                newYaw = 90.0f;
-                newPitch = 56.9f;
+                newYaw = 89.9f;
+                newPitch = 84.5f;
             } else {
                 newX = currentX + 0.5d;
-                newZ = currentZ + 1.5d;
-                newYaw = -179.9f;
-                newPitch = 57.2f;
+                newZ = currentZ + 0.2d;
+                newYaw = 179.9f;
+                newPitch = 83.9f;
             }
         }
         setNewDestination(newX, newZ, newYaw, newPitch);
-        System.out.println("current " + currentX + " " + currentZ + " " + newYaw);
+        System.out.println("current " + currentX + " " + currentZ + " " + newZ);
     }
 
     private void placeSand() {
         int eq = checkEq();
 
         if (eq == -1) {
-            changeSandBuilderStatus(SandBuilderStatusV2.TP_TO_CHESTS);
+            changeBuilderStatusV2(BuilderStatusV2.MOVING_TP);
             return;
         } else if (eq == 0) {
-            changeSandBuilderStatus(SandBuilderStatusV2.MOVING_SAND);
+            changeBuilderStatusV2(BuilderStatusV2.MOVING);
             return;
         } else {
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
         }
 
+        if ((currentZ == FIRST_Z && !isSandOdd()) || (currentZ == LAST_Z && isSandOdd())) {
+            connection.sendPacket(PlayerBlockPlacementPacket.builder()
+                    .x(currentX - 1)
+                    .y((int) feetY - 1)
+                    .z(currentZ)
+                    .face(5)
+                    .hand(0)
+                    .cursorX(1.0f)
+                    .cursorY(0.875f)
+                    .cursorZ(0.5f)
+                    .build());
+            connection.sendPacket(new AnimationPacket(0));
+            return;
+        }
+
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
                 .x(currentX)
                 .y((int) feetY - 1)
-                .z(currentZ)
-                .face(1)
+                .z(isSandOdd() ? currentZ + 1 : currentZ - 1)
+                .face(isSandOdd() ? 2 : 3)
                 .hand(0)
                 .cursorX(0.5f)
-                .cursorY(1.0f)
-                .cursorZ(0.5f)
+                .cursorY(0.875f)
+                .cursorZ(isSandOdd() ? 0.0f : 1.0f)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
     }
 
     private void nextSand() {
-        if ((currentZ == LAST_Z && !isSandOdd()) || (currentZ == FIRST_Z && isSandOdd())) {
-            currentX += 2;
-        } else if (!isSandOdd()) {
-            currentZ += 2;
-        } else {
-            currentZ -= 2;
-        }
+            if ((currentZ == LAST_Z && !isSandOdd()) || (currentZ == FIRST_Z && isSandOdd())) {
+                currentX++;
+            } else if (!isSandOdd()) {
+                currentZ++;
+            } else {
+                currentZ--;
+            }
 
-        if (currentX > LAST_X) {
-            changeSandBuilderStatus(SandBuilderStatusV2.DISABLED);
-        }
+            if (currentX > LAST_X) {
+                connection.disconnect();
+            }
     }
 
     private boolean isSandOdd() {
-        return currentX % 4 == 3;
+        return currentX % 2 == 1;
     }
 
     private int checkEq() {
@@ -337,11 +353,6 @@ public class SandBuilderSessionV2 extends MovableSession {
                             0, i + 9, 0, actionCounter, 0, inventory[i].getData()
                     ));
                     actionCounter++;
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
                     connection.sendPacket(new ClickWindowPacket(
                             0, 36, 0, actionCounter, 0, inventory[i].getData()
                     ));
@@ -352,7 +363,7 @@ public class SandBuilderSessionV2 extends MovableSession {
                     System.out.println(" empty " + Arrays.toString(inventory[i].getData()));
                 }
             }
-            System.out.println("Skonczyl sie piasek :(");
+            System.out.println("Skonczyly sie plytki :(");
             return -1;
         } else {
             return 1;
@@ -360,7 +371,7 @@ public class SandBuilderSessionV2 extends MovableSession {
     }
 
     private void stop() {
-        changeSandBuilderStatus(SandBuilderStatusV2.DISABLED);
+        builderStatus = BuilderStatusV2.DISABLED;
         move = null;
     }
 
@@ -371,9 +382,9 @@ public class SandBuilderSessionV2 extends MovableSession {
             String[] coords = message.substring(first + 1, last).split(";");
             int x = Integer.parseInt(coords[0]);
             int z = Integer.parseInt(coords[1]);
-            return new int[]{x, z};
+            return new int[] {x, z};
         } else {
-            return new int[]{};
+            return new int[] {};
         }
     }
 

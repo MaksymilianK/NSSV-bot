@@ -4,6 +4,10 @@ import pl.konradmaksymilian.nssvbot.config.DealerConfigReader;
 import pl.konradmaksymilian.nssvbot.connection.ConnectionManager;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketReader;
 import pl.konradmaksymilian.nssvbot.protocol.packet.PacketWriter;
+import pl.konradmaksymilian.nssvbot.session.v2.CactusBuilderSessionV2;
+import pl.konradmaksymilian.nssvbot.session.v2.DiggerSessionV2;
+import pl.konradmaksymilian.nssvbot.session.v2.SandBuilderSessionV2;
+import pl.konradmaksymilian.nssvbot.session.v2.StringBuilderSessionV2;
 import pl.konradmaksymilian.nssvbot.utils.Timer;
 import pl.konradmaksymilian.nssvbot.utils.ZlibCompressor;
 
@@ -27,14 +31,14 @@ public class SessionFactory {
                 config.get());
     }
 
-    public SlabBuilderSession createSlab() {
+    public StringBuilderSessionV2 createSlab() {
         var zlib = new ZlibCompressor();
-        return new SlabBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new StringBuilderSessionV2(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
-    public HoleDiggerSession createDigger() {
+    public DiggerSessionV2 createDigger() {
         var zlib = new ZlibCompressor();
-        return new HoleDiggerSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new DiggerSessionV2(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
     public GateBuilderSession createGate() {
@@ -42,14 +46,14 @@ public class SessionFactory {
         return new GateBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
-    public SandBuilderSession createSand() {
+    public SandBuilderSessionV2 createSand() {
         var zlib = new ZlibCompressor();
-        return new SandBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new SandBuilderSessionV2(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
-    public CactusBuilderSession createCactus() {
+    public CactusBuilderSessionV2 createCactus() {
         var zlib = new ZlibCompressor();
-        return new CactusBuilderSession(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
+        return new CactusBuilderSessionV2(new ConnectionManager(50, new PacketReader(zlib), new PacketWriter(zlib)), new Timer());
     }
 
     public FenceBuilderSession createFence() {
