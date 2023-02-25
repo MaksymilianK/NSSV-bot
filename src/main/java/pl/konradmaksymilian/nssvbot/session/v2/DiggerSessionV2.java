@@ -107,7 +107,7 @@ public class DiggerSessionV2 extends MovableSession {
         String message = ChatFormatter.getPureText(packet.getMessage().getComponents());
 
         if (builderStatus.equals(BuilderStatusV2.BUYING)) {
-            if (message.endsWith("wysprzedany.")) {
+            if (message.endsWith("materialow na sprzedaz.")) {
                 changeDiggerStatus(BuilderStatusV2.TP_TO_WORK);
             } else if (message.contains("w skrzynce.")) {
                 changeDiggerStatus(BuilderStatusV2.TP_TO_WORK);
@@ -212,20 +212,26 @@ public class DiggerSessionV2 extends MovableSession {
         double newX, newZ;
         float newYaw, newPitch;
 
-        if (isHoleOdd()) {
-
-                newX = currentX + 0.5d;
-                newZ = currentZ - 0.2d;
-                newYaw = 0.1f;
-                newPitch = 72.1f;
-
+        if ((int) feetY % 4 != 0 && currentZ == LAST_Z && !isHoleOdd()) {
+            newX = currentX + 1.2d;
+            newZ = currentZ + 0.5d;
+            newYaw = 90.0f;
+            newPitch = 72.1f;
+        } else if ((int) feetY % 4 != 0 && currentZ == FIRST_Z && isHoleOdd()) {
+            newX = currentX + 1.2d;
+            newZ = currentZ + 0.5d;
+            newYaw = 90.1f;
+            newPitch = 72.1f;
+        } else if (isHoleOdd()) {
+            newX = currentX + 0.5d;
+            newZ = currentZ - 0.2d;
+            newYaw = 0.1f;
+            newPitch = 72.1f;
         } else {
-
-                newX = currentX + 0.5d;
-                newZ = currentZ + 0.8d;
-                newYaw = 179.9f;
-                newPitch = 72.0f;
-
+            newX = currentX + 0.5d;
+            newZ = currentZ + 0.8d;
+            newYaw = 179.9f;
+            newPitch = 72.0f;
         }
         setNewDestination(newX, newZ, newYaw, newPitch);
         System.out.println("current " + currentX + " " + currentZ + " " + newZ);
@@ -266,12 +272,18 @@ public class DiggerSessionV2 extends MovableSession {
     }
 
     private void nextHole() {
-        if (currentZ == LAST_Z - 1 && !isHoleOdd()) {
+        if ((int) feetY % 4 == 0 && currentZ == LAST_Z - 1 && !isHoleOdd()) {
             currentX++;
             currentZ++;
-        } else if (currentZ == FIRST_Z + 1 && isHoleOdd()) {
+        } else if ((int) feetY % 4 == 0 && currentZ == FIRST_Z + 1 && isHoleOdd()) {
             currentX++;
             currentZ--;
+        } else if ((int) feetY % 4 != 0 && currentZ == LAST_Z && !isHoleOdd()) {
+            currentX++;
+            currentZ--;
+        } else if ((int) feetY % 4 != 0 && currentZ == FIRST_Z && isHoleOdd()) {
+            currentX++;
+            currentZ++;
         } else if (!isHoleOdd()) {
             currentZ += 2;
         } else {

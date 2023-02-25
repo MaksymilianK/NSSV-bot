@@ -22,15 +22,13 @@ public class CactusBuilderSessionV2 extends MovableSession {
     private final int LAST_X = 28895;
     private final int LAST_Z = -7617;
 
-    private final int CHEST_X = 28475;
+    private final int CHEST_X = 28473;
     private final int CHEST_Y = 1;
     private final int CHEST_Z = -5485;
 
     private BuilderStatusV2 builderStatus = BuilderStatusV2.DISABLED;
     private int currentX;
     private int currentZ;
-    private int nextX;
-    private int nextZ;
 
     private final Slot[] inventory = new Slot[36];
     private int actionCounter = 1;
@@ -64,7 +62,7 @@ public class CactusBuilderSessionV2 extends MovableSession {
         }
 
         if (builderStatus.equals(BuilderStatusV2.BUILDING) &&
-                packet.getPosition().getY() == (int) feetY - 1 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
+                packet.getPosition().getY() == (int) feetY - 3 && packet.getPosition().getX() == currentX && packet.getPosition().getZ() == currentZ) {
             System.out.println("block change " + packet.getStateID());
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(Integer.MAX_VALUE));
 
@@ -220,21 +218,47 @@ public class CactusBuilderSessionV2 extends MovableSession {
     }
 
     private void start(int firstX, int firstZ) {
-        nextX = firstX;
-        nextZ = firstZ;
-        next();
+        currentX = firstX;
+        currentZ = firstZ;
         moveToBuild();
     }
 
     private void moveToBuild() {
         changeBuilderStatus(BuilderStatusV2.MOVING);
+
+        double newX;
+        double newZ;
+        float newYaw;
+        float newPitch;
+        if (isOdd() && currentZ == FIRST_Z) {
+            newX = currentX - 0.5;
+            newZ = currentZ + 2.5;
+            newYaw = -159.8f;
+            newPitch = 63.1f;
+        } else if (!isOdd() && currentZ == LAST_Z) {
+            newX = currentX + 0.5;
+            newZ = currentZ - 0.5;
+            newYaw = -0.1f;
+            newPitch = 69.0f;
+        } else if (currentX % 2 == 0) {
+            newX = currentX + 1.5;
+            newZ = currentZ + 0.5;
+            newYaw = 90.5f;
+            newPitch = 70.3f;
+        } else {
+            newX = currentX - 0.5;
+            newZ = currentZ + 0.5;
+            newYaw = -90.6f;
+            newPitch = 70.2f;
+        }
+
         setNewDestination(
-                nextX + 0.5,
-                nextZ + 0.5,
-                getYaw(nextX + 0.5, nextZ + 0.5, (float) currentX + 0.5f, (float) currentZ + 0.5f),
-                getPitch(nextX + 0.5, nextZ + 0.5, (float) currentX + 0.5f, (float) feetY, (float) currentZ + 0.5f)
+                newX,
+                newZ,
+                newYaw,
+                newPitch
         );
-        System.out.println("current " + currentX + " " + currentZ + " " + getYaw(nextX + 0.5, nextZ + 0.5, (float) currentX + 0.5f, (float) currentZ + 0.5f) + " " + getPitch(nextX + 0.5, nextZ + 0.5, (float) currentX + 0.5f, (float) feetY, (float) currentZ + 0.5f));
+        System.out.println("current " + currentX + " " + currentZ);
     }
 
     private void place() {
@@ -250,44 +274,55 @@ public class CactusBuilderSessionV2 extends MovableSession {
             timer.setTimeFromNow("checkHand", Duration.ofSeconds(1));
         }
 
+        float cursorX;
+        float cursorZ;
+        if (isOdd() && currentZ == FIRST_Z) {
+            cursorX = 0.133f;
+            cursorZ = 0.777f;
+        } else if (!isOdd() && currentZ == LAST_Z) {
+            cursorX = 0.5f;
+            cursorZ = 0.8f;
+        } else if (currentX % 2 == 0) {
+            cursorX = 0.2f;
+            cursorZ = 0.5f;
+        } else {
+            cursorX = 0.8f;
+            cursorZ = 0.5f;
+        }
+
         connection.sendPacket(PlayerBlockPlacementPacket.builder()
                 .x(currentX)
-                .y((int) feetY - 1)
+                .y((int) feetY - 3)
                 .z(currentZ)
                 .face(1)
                 .hand(0)
-                .cursorX(0.5f)
+                .cursorX(cursorX)
                 .cursorY(1.0f)
-                .cursorZ(0.5f)
+                .cursorZ(cursorZ)
                 .build());
         connection.sendPacket(new AnimationPacket(0));
-        System.out.println("place " + ((int) feetY - 1) + " " + currentZ);
+        System.out.println("place " + currentX + " " + (int) (feetY - 3) + " " + currentZ + " " + cursorX + " " + cursorZ);
     }
 
     private void next() {
-        currentX = nextX;
-        currentZ = nextZ;
-
-        if ((nextZ == LAST_Z && isOdd()) || (nextZ == FIRST_Z && !isOdd())) {
-           nextX += 2;
-        } else if (isOdd()) {
-            if (nextX % 2 == 1) {
-                nextX--;
-            } else {
-                nextX++;
-            }
-            nextZ++;
+        if ((isOdd() && currentZ == LAST_Z) || (!isOdd() && currentZ == FIRST_Z)) {
+            currentX += 2;
         } else {
-            if (nextX % 2 == 0) {
-                nextX++;
+            if (currentX % 2 == 0) {
+                currentX++;
             } else {
-                nextX--;
+                currentX--;
             }
-            nextZ--;
+
+            if (isOdd()) {
+                currentZ++;
+            } else {
+                currentZ--;
+            }
         }
 
-        if (nextX > LAST_X) {
-            changeBuilderStatus(BuilderStatusV2.DISABLED);
+        if (currentX > LAST_X) {
+            connection.disconnect();
         }
     }
 
@@ -300,7 +335,7 @@ public class CactusBuilderSessionV2 extends MovableSession {
         if (!inventory[27].isPresent()) {
             for (int i = 0; i < 36; i++) {
                 if (inventory[i].isPresent()) {
-                    if (inventory[i].getData()[1] != 5) {
+                    if (inventory[i].getData()[1] != 81) {
                         connection.sendPacket(new ClickWindowPacket(
                                 0, i + 9, 1, actionCounter, 4, new byte[]{(byte) 255, (byte) 255}
                         ));
